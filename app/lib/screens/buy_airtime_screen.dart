@@ -4,7 +4,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/purchase_airtime_service.dart';
 import '../components/payment_method_selector.dart';
 
-
 class BuyAirtimeScreen extends StatefulWidget {
   const BuyAirtimeScreen({super.key});
 
@@ -37,11 +36,16 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
     super.dispose();
   }
 
-  Future<void> processPayment(String amount, String network, String phone) async {
+  Future<void> processPayment(
+    String amount,
+    String network,
+    String phone,
+  ) async {
     final itemName = Uri.encodeComponent('Airtime Top-up');
     final itemDescription = Uri.encodeComponent('$network Airtime for $phone');
     final base = 'https://payment.payfast.io/eng/process';
-    final query = 'cmd=_paynow&receiver=14362369'
+    final query =
+        'cmd=_paynow&receiver=14362369'
         '&item_name=$itemName'
         '&email_confirmation=1'
         '&confirmation_address=conferencendlovu@gmail.com'
@@ -77,9 +81,9 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
         throw 'launchUrl returned false';
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Payment failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Payment failed: $e')));
     }
   }
 
@@ -140,7 +144,10 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('✗ ${result['message'] ?? 'Purchase failed'}'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('✗ ${result['message'] ?? 'Purchase failed'}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } catch (e) {
@@ -162,9 +169,7 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -172,7 +177,7 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: const Color(0xFF3B0D11).withOpacity(0.1),
+                color: const Color(0xFF3B0D11).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(40),
               ),
               child: const Icon(
@@ -184,18 +189,12 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
             const SizedBox(height: 20),
             const Text(
               'Processing Payment',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               'R${_amountController.text} from your wallet',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             ),
             const SizedBox(height: 20),
             SizedBox(
@@ -203,7 +202,7 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
               height: 50,
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(
-                  const Color(0xFF3B0D11).withOpacity(0.8),
+                  const Color(0xFF3B0D11).withValues(alpha: 0.8),
                 ),
               ),
             ),
@@ -235,9 +234,7 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              '✗ ${result['message'] ?? 'Payment failed'}',
-            ),
+            content: Text('✗ ${result['message'] ?? 'Payment failed'}'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -308,10 +305,7 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
                   ),
                   Text(
                     'Enter your voucher code to proceed',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 24),
                   const Text(
@@ -330,15 +324,11 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
                       hintStyle: TextStyle(color: Colors.grey[400]),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: Color(0xFFFB8B24),
-                        ),
+                        borderSide: const BorderSide(color: Color(0xFFFB8B24)),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: Colors.grey[300]!,
-                        ),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -398,9 +388,7 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -408,7 +396,7 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: const Color(0xFFFB8B24).withOpacity(0.1),
+                color: const Color(0xFFFB8B24).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(40),
               ),
               child: const Icon(
@@ -420,10 +408,7 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
             const SizedBox(height: 20),
             const Text(
               'Validating Voucher',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
@@ -440,7 +425,7 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
               height: 50,
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(
-                  const Color(0xFFFB8B24).withOpacity(0.8),
+                  const Color(0xFFFB8B24).withValues(alpha: 0.8),
                 ),
               ),
             ),
@@ -511,8 +496,9 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
           ),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
         child: Form(
           key: _formKey,
           child: ListView(
@@ -534,15 +520,11 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
                   hintStyle: TextStyle(color: Colors.grey[400]),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Color(0xFFFB8B24),
-                    ),
+                    borderSide: const BorderSide(color: Color(0xFFFB8B24)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Colors.grey[300]!,
-                    ),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -554,8 +536,7 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
                   filled: true,
                   fillColor: Colors.white,
                 ),
-                validator: (value) =>
-                value == null || value.length < 10
+                validator: (value) => value == null || value.length < 10
                     ? 'Enter a valid number'
                     : null,
               ),
@@ -575,26 +556,22 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
                   ],
                 ),
                 child: DropdownButtonFormField<String>(
-                  value: _selectedNetwork,
+                  initialValue: _selectedNetwork,
                   decoration: InputDecoration(
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: Colors.grey[300]!,
-                      ),
+                      borderSide: BorderSide(color: Colors.grey[300]!),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: Colors.grey[300]!,
-                      ),
+                      borderSide: BorderSide(color: Colors.grey[300]!),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -602,28 +579,30 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
                     ),
                   ),
                   items: _networks
-                      .map((network) => DropdownMenuItem(
-                    value: network,
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFB8B24),
-                            borderRadius: BorderRadius.circular(50),
+                      .map(
+                        (network) => DropdownMenuItem(
+                          value: network,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFB8B24),
+                                  borderRadius: BorderRadius.circular(50),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                network,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Text(
-                          network,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ))
+                      )
                       .toList(),
                   onChanged: (value) {
                     if (value != null) {
@@ -650,15 +629,11 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
                   hintStyle: TextStyle(color: Colors.grey[400]),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Color(0xFFFB8B24),
-                    ),
+                    borderSide: const BorderSide(color: Color(0xFFFB8B24)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Colors.grey[300]!,
-                    ),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -671,7 +646,7 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
                   fillColor: Colors.white,
                 ),
                 validator: (value) =>
-                value == null || value.isEmpty ? 'Amount required' : null,
+                    value == null || value.isEmpty ? 'Amount required' : null,
               ),
               const SizedBox(height: 16),
               Wrap(
@@ -688,7 +663,9 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
                       });
                     },
                     backgroundColor: Colors.white,
-                    selectedColor: const Color(0xFFFB8B24).withOpacity(0.2),
+                    selectedColor: const Color(
+                      0xFFFB8B24,
+                    ).withValues(alpha: 0.2),
                     side: BorderSide(
                       color: isSelected
                           ? const Color(0xFFFB8B24)
@@ -710,7 +687,7 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFFB8B24).withOpacity(0.3),
+                      color: const Color(0xFFFB8B24).withValues(alpha: 0.3),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -744,6 +721,7 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
             ],
           ),
         ),
+        ),
       ),
     );
   }
@@ -763,12 +741,12 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -777,7 +755,7 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: color, size: 28),

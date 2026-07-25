@@ -17,7 +17,11 @@ class PaymentStatusScreen extends StatelessWidget {
             Icons.close,
             color: success ? const Color(0xFFFB8B24) : const Color(0xFF3B0D11),
           ),
-          onPressed: () => Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const HomeScreen()), (route) => false),
+          onPressed: () => Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+            (route) => false,
+          ),
         ),
         title: Text(
           success ? 'Payment Successful' : 'Payment Cancelled',
@@ -50,8 +54,8 @@ class PaymentStatusScreen extends StatelessWidget {
                   boxShadow: [
                     BoxShadow(
                       color: success
-                          ? const Color(0xFFFB8B24).withOpacity(0.3)
-                          : const Color(0xFF3B0D11).withOpacity(0.3),
+                          ? const Color(0xFFFB8B24).withValues(alpha: 0.3)
+                          : const Color(0xFF3B0D11).withValues(alpha: 0.3),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -69,7 +73,9 @@ class PaymentStatusScreen extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: success ? const Color(0xFFFB8B24) : const Color(0xFF3B0D11),
+                  color: success
+                      ? const Color(0xFFFB8B24)
+                      : const Color(0xFF3B0D11),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -89,9 +95,15 @@ class PaymentStatusScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const HomeScreen()), (route) => false),
+                  onPressed: () => Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const HomeScreen()),
+                    (route) => false,
+                  ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: success ? const Color(0xFFFB8B24) : const Color(0xFF3B0D11),
+                    backgroundColor: success
+                        ? const Color(0xFFFB8B24)
+                        : const Color(0xFF3B0D11),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -99,8 +111,8 @@ class PaymentStatusScreen extends StatelessWidget {
                     ),
                     elevation: 2,
                     shadowColor: success
-                        ? const Color(0xFFFB8B24).withOpacity(0.4)
-                        : const Color(0xFF3B0D11).withOpacity(0.4),
+                        ? const Color(0xFFFB8B24).withValues(alpha: 0.4)
+                        : const Color(0xFF3B0D11).withValues(alpha: 0.4),
                   ),
                   child: const Text(
                     'Back to App',

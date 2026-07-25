@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from './contexts/AuthContext';
+import { FiMenu } from 'react-icons/fi';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import NoticesPage from './pages/NoticesPage';
@@ -11,7 +12,6 @@ import DistrictsPage from './pages/DistrictsPage';
 import CircuitsPage from './pages/CircuitsPage';
 import MinistersPage from './pages/MinistersPage';
 import TransactionsPage from './pages/TransactionsPage';
-import MarketplacePage from './pages/MarketplacePage';
 import TicketsPage from './pages/TicketsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
@@ -31,7 +31,6 @@ const PAGE_TITLES = {
   circuits: { title: 'Circuits', subtitle: 'Church circuits' },
   ministers: { title: 'Ministers', subtitle: 'Church ministers and appointments' },
   transactions: { title: 'Transactions', subtitle: 'All wallet and payment activity' },
-  marketplace: { title: 'Marketplace', subtitle: 'Church store products' },
   tickets: { title: 'Support Tickets', subtitle: 'User-submitted issues' },
   analytics: { title: 'Analytics', subtitle: 'App and website traffic insights' },
   settings: { title: 'Settings', subtitle: 'API keys and integrations' },
@@ -50,7 +49,6 @@ const PAGE_COMPONENTS = {
   circuits: CircuitsPage,
   ministers: MinistersPage,
   transactions: TransactionsPage,
-  marketplace: MarketplacePage,
   tickets: TicketsPage,
   analytics: AnalyticsPage,
   settings: SettingsPage,
@@ -59,6 +57,7 @@ const PAGE_COMPONENTS = {
 
 function AdminApp() {
   const [activePage, setActivePage] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAuth();
   const info = PAGE_TITLES[activePage] || {};
   const PageComponent = PAGE_COMPONENTS[activePage] || Dashboard;
@@ -67,15 +66,29 @@ function AdminApp() {
 
   return (
     <div className="admin-layout">
-      <Sidebar activePage={activePage} setActivePage={setActivePage} />
+      <Sidebar
+        activePage={activePage}
+        setActivePage={setActivePage}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
       <main className="main-content">
         <header className="topbar">
-          <div className="topbar-title">
-            <h2>{info.title}</h2>
-            <p>{info.subtitle}</p>
+          <div className="topbar-left">
+            <button
+              className="mobile-menu-toggle"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              aria-label="Toggle navigation"
+            >
+              <FiMenu size={22} />
+            </button>
+            <div className="topbar-title">
+              <h2>{info.title}</h2>
+              <p>{info.subtitle}</p>
+            </div>
           </div>
           <div className="topbar-actions">
-            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+            <span className="topbar-date">
               {new Date().toLocaleDateString('en-ZA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </span>
           </div>

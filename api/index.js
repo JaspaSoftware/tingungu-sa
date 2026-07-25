@@ -245,55 +245,6 @@ app.get('/api/circuits/:id/societies', async (req, res) => {
   }
 });
 
-// Products (Marketplace)
-app.get('/api/products', async (req, res) => {
-  try {
-    const db = await getPool();
-    const [rows] = await db.query('SELECT * FROM products ORDER BY created_at DESC');
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/products', async (req, res) => {
-  const { name, title, seller, cost_price, selling_price, description, category, stock, image_url } = req.body;
-  try {
-    const db = await getPool();
-    const [result] = await db.query(
-      'INSERT INTO products (product_name, product_title, seller_name, cost_price, selling_price, product_description, category, stock_quantity, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [name, title, seller, cost_price, selling_price, description, category, stock, image_url]
-    );
-    res.status(201).json({ id: result.insertId, ...req.body });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.put('/api/products/:id', async (req, res) => {
-  const { name, title, seller, cost_price, selling_price, description, category, stock, image_url } = req.body;
-  try {
-    const db = await getPool();
-    await db.query(
-      'UPDATE products SET product_name = ?, product_title = ?, seller_name = ?, cost_price = ?, selling_price = ?, product_description = ?, category = ?, stock_quantity = ?, image_url = ? WHERE product_id = ?',
-      [name, title, seller, cost_price, selling_price, description, category, stock, image_url, req.params.id]
-    );
-    res.json({ id: req.params.id, ...req.body });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.delete('/api/products/:id', async (req, res) => {
-  try {
-    const db = await getPool();
-    await db.query('DELETE FROM products WHERE product_id = ?', [req.params.id]);
-    res.status(204).end();
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // Stats
 app.get('/api/stats', async (req, res) => {
   try {
@@ -302,14 +253,12 @@ app.get('/api/stats', async (req, res) => {
     const [[{ count: circuits }]] = await db.query('SELECT COUNT(*) as count FROM circuits');
     const [[{ count: societies }]] = await db.query('SELECT COUNT(*) as count FROM societies');
     const [[{ count: ministers }]] = await db.query('SELECT COUNT(*) as count FROM persons');
-    const [[{ count: products }]] = await db.query('SELECT COUNT(*) as count FROM products');
     
     res.json({
       districts,
       circuits,
       societies,
-      ministers,
-      products
+      ministers
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

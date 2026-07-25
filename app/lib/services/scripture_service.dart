@@ -1,5 +1,3 @@
-
-
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -14,9 +12,7 @@ class ScriptureService {
   static Future<Scripture> getRandomScripture() async {
     try {
       final response = await http
-          .get(
-        Uri.parse('$_baseUrl?passage=random&formatting=plain&type=json'),
-      )
+          .get(Uri.parse('$_baseUrl?passage=random&formatting=plain&type=json'))
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
@@ -28,11 +24,11 @@ class ScriptureService {
           final text = verse['text'] ?? '';
           final bookname = verse['bookname'] ?? 'Unknown';
           final chapter = verse['chapter'] ?? 0;
-          final verse_num = verse['verse'] ?? 0;
+          final verseNum = verse['verse'] ?? 0;
 
           return Scripture(
             text: '"$text"',
-            reference: '$bookname $chapter:$verse_num',
+            reference: '$bookname $chapter:$verseNum',
             translation: 'NET Bible',
           );
         }
@@ -54,7 +50,7 @@ class ScriptureService {
   static Scripture _getDefaultScripture() {
     return Scripture(
       text:
-      '"For I know the plans I have for you, declares the Lord, plans for welfare and not for evil, to give you a future and a hope."',
+          '"For I know the plans I have for you, declares the Lord, plans for welfare and not for evil, to give you a future and a hope."',
       reference: 'Jeremiah 29:11',
       translation: 'ESV',
     );

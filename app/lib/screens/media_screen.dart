@@ -31,7 +31,8 @@ class _MediaScreenState extends State<MediaScreen> {
         iconTheme: const IconThemeData(color: Colors.white),
         centerTitle: true,
       ),
-      body: StreamBuilder<QuerySnapshot>(
+      body: SafeArea(
+        child: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('media').orderBy('createdAt', descending: true).snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -133,6 +134,7 @@ class _MediaScreenState extends State<MediaScreen> {
           );
         },
       ),
-    );
+    ),
+  );
   }
 }

@@ -95,74 +95,89 @@ class _PaymentMethodSelectorState extends State<PaymentMethodSelector> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: Color(0xFFFAF9F6),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return SafeArea(
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
+        padding: EdgeInsets.only(
+          left: 24,
+          right: 24,
+          top: 24,
+          bottom: bottomInset + 24,
+        ),
+        decoration: const BoxDecoration(
+          color: Color(0xFFFAF9F6),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Choose Payment Method',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF3B0D11)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Choose Payment Method',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF3B0D11)),
+                  ),
+                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                ],
               ),
-              IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+              const SizedBox(height: 8),
+              Text(
+                'Total Amount: R ${widget.amount.toStringAsFixed(2)}',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFFFB8B24)),
+              ),
+              const SizedBox(height: 24),
+              _buildPaymentOption(
+                title: 'Tingungu Wallet',
+                subtitle: 'Pay using your wallet balance',
+                icon: Icons.account_balance_wallet_outlined,
+                onTap: _isProcessing ? null : _processWalletPayment,
+                isLoading: _isProcessing,
+              ),
+              const SizedBox(height: 12),
+              _buildPaymentOption(
+                title: 'PayFast',
+                subtitle: 'Credit Card, Instant EFT, and more',
+                icon: Icons.payment_outlined,
+                onTap: _isProcessing ? null : _processPayFastPayment,
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Other Options',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
+              ),
+              const SizedBox(height: 12),
+              FutureBuilder<PaymentConfiguration>(
+                future: _googlePayConfigFuture,
+                builder: (context, snapshot) => snapshot.hasData
+                    ? GooglePayButton(
+                        paymentConfiguration: snapshot.data!,
+                        paymentItems: [
+                          PaymentItem(
+                            label: widget.title,
+                            amount: widget.amount.toStringAsFixed(2),
+                            status: PaymentItemStatus.final_price,
+                          )
+                        ],
+                        type: GooglePayButtonType.buy,
+                        margin: const EdgeInsets.only(top: 15.0),
+                        onPaymentResult: _onGooglePayResult,
+                        loadingIndicator: const Center(child: CircularProgressIndicator()),
+                        width: double.infinity,
+                      )
+                    : const SizedBox.shrink(),
+              ),
+              const SizedBox(height: 24),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Total Amount: R ${widget.amount.toStringAsFixed(2)}',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFFFB8B24)),
-          ),
-          const SizedBox(height: 24),
-          _buildPaymentOption(
-            title: 'Tingungu Wallet',
-            subtitle: 'Pay using your wallet balance',
-            icon: Icons.account_balance_wallet_outlined,
-            onTap: _isProcessing ? null : _processWalletPayment,
-            isLoading: _isProcessing,
-          ),
-          const SizedBox(height: 12),
-          _buildPaymentOption(
-            title: 'PayFast',
-            subtitle: 'Credit Card, Instant EFT, and more',
-            icon: Icons.payment_outlined,
-            onTap: _isProcessing ? null : _processPayFastPayment,
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Other Options',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
-          ),
-          const SizedBox(height: 12),
-          FutureBuilder<PaymentConfiguration>(
-            future: _googlePayConfigFuture,
-            builder: (context, snapshot) => snapshot.hasData
-                ? GooglePayButton(
-                    paymentConfiguration: snapshot.data!,
-                    paymentItems: [
-                      PaymentItem(
-                        label: widget.title,
-                        amount: widget.amount.toStringAsFixed(2),
-                        status: PaymentItemStatus.final_price,
-                      )
-                    ],
-                    type: GooglePayButtonType.buy,
-                    margin: const EdgeInsets.only(top: 15.0),
-                    onPaymentResult: _onGooglePayResult,
-                    loadingIndicator: const Center(child: CircularProgressIndicator()),
-                    width: double.infinity,
-                  )
-                : const SizedBox.shrink(),
-          ),
-          const SizedBox(height: 24),
-        ],
+        ),
       ),
     );
   }

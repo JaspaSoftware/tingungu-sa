@@ -8,6 +8,7 @@ import 'package:tingungu_app/splash.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'screens/home_screen.dart';
+import 'screens/login_screen.dart';
 import 'screens/onboarding_screen.dart';
 
 
@@ -59,7 +60,7 @@ void main() async {
     ),
     home: isFirstLaunch
         ? const OnboardingScreen()
-        : (user != null ? const HomeScreen() : const HomeScreen()),
+        : (user != null ? const HomeScreen() : const LoginScreen()),
   ));
 }
 

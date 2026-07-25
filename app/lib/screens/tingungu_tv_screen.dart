@@ -68,10 +68,7 @@ class _TingungtuTvScreenState extends State<TingungtuTvScreen> {
                   const SizedBox(height: 16),
                   Text(
                     'Loading videos...',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   ),
                 ],
               ),
@@ -100,10 +97,7 @@ class _TingungtuTvScreenState extends State<TingungtuTvScreen> {
                   const SizedBox(height: 8),
                   Text(
                     'Please check your internet connection',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[500],
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                   ),
                 ],
               ),
@@ -160,7 +154,7 @@ class _TingungtuTvScreenState extends State<TingungtuTvScreen> {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -201,7 +195,7 @@ class _TingungtuTvScreenState extends State<TingungtuTvScreen> {
                 Positioned.fill(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.3),
+                      color: Colors.black.withValues(alpha: 0.3),
                     ),
                     child: const Center(
                       child: Icon(
@@ -265,7 +259,7 @@ class _TingungtuTvScreenState extends State<TingungtuTvScreen> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF3B0D11).withOpacity(0.1),
+                          color: const Color(0xFF3B0D11).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Icon(

@@ -82,57 +82,64 @@ class _SocietySelectionPageState extends State<SocietySelectionPage> {
           style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF3B0D11)))
-          : Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.white,
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search society...',
-                prefixIcon: const Icon(Icons.search, color: Color(0xFF3B0D11)),
-                filled: true,
-                fillColor: Colors.grey[100],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
-              ),
-              onChanged: filterSocieties,
-            ),
-          ),
-          Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: filteredSocieties.length,
-              separatorBuilder: (context, index) => const Divider(height: 1, indent: 16, endIndent: 16),
-              itemBuilder: (context, index) {
-                final society = filteredSocieties[index];
-                final isSelected = society.name == widget.currentSociety;
-
-                return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                  title: Text(
-                    society.name,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      color: isSelected ? const Color(0xFF3B0D11) : Colors.black87,
+      body: SafeArea(
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator(color: Color(0xFF3B0D11)))
+            : Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    color: Colors.white,
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Search society...',
+                        prefixIcon: const Icon(Icons.search, color: Color(0xFF3B0D11)),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                      ),
+                      onChanged: filterSocieties,
                     ),
                   ),
-                  subtitle: society.circuit != null ? Text(society.circuit!, style: const TextStyle(fontSize: 12)) : null,
-                  trailing: isSelected
-                      ? const Icon(Icons.check_circle, color: Color(0xFFFB8B24))
-                      : const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
-                  onTap: () => updateSociety(society.name),
-                );
-              },
-            ),
-          ),
-        ],
+                  Expanded(
+                    child: ListView.separated(
+                      padding: EdgeInsets.fromLTRB(
+                        0,
+                        8,
+                        0,
+                        MediaQuery.of(context).padding.bottom + 16,
+                      ),
+                      itemCount: filteredSocieties.length,
+                      separatorBuilder: (context, index) => const Divider(height: 1, indent: 16, endIndent: 16),
+                      itemBuilder: (context, index) {
+                        final society = filteredSocieties[index];
+                        final isSelected = society.name == widget.currentSociety;
+
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                          title: Text(
+                            society.name,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              color: isSelected ? const Color(0xFF3B0D11) : Colors.black87,
+                            ),
+                          ),
+                          subtitle: society.circuit != null ? Text(society.circuit!, style: const TextStyle(fontSize: 12)) : null,
+                          trailing: isSelected
+                              ? const Icon(Icons.check_circle, color: Color(0xFFFB8B24))
+                              : const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                          onTap: () => updateSociety(society.name),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }

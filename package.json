@@ -1,0 +1,28 @@
+{
+  "name": "tingungu-sa",
+  "version": "1.0.0",
+  "description": "Tingungu Methodist Church companion application & admin ecosystem",
+  "private": true,
+  "author": "Jaspa",
+  "license": "ISC",
+  "scripts": {
+    "android": "cd app && flutter run -d adb-R92X51XE4NY-zyKKLj._adb-tls-connect._tcp",
+    "app:android": "cd app && flutter run -d adb-R92X51XE4NY-zyKKLj._adb-tls-connect._tcp",
+    "app:build": "cd app && flutter build apk",
+    "start:api": "npm --prefix api start",
+    "seed:api": "npm --prefix api run seed",
+    "mysql-seed:api": "npm --prefix api run mysql-seed",
+    "dev:admin": "npm --prefix admin run dev",
+    "build:admin": "npm --prefix admin run build",
+    "preview:admin": "npm --prefix admin run preview",
+    "lint:admin": "npm --prefix admin run lint"
+  },
+  "workspaces": [
+    "admin",
+    "api"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

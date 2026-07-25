@@ -41,7 +41,7 @@ export default function TransactionsPage() {
     return () => unsubs.forEach(u => u());
   }, []);
 
-  const types = ['all', 'giving', 'topup', 'marketplace', 'airtime'];
+  const types = ['all', 'giving', 'topup', 'airtime'];
 
   const filtered = transactions.filter(t => {
     const typeLower = (t.type || '').toLowerCase();
@@ -50,8 +50,6 @@ export default function TransactionsPage() {
       matchType = true;
     } else if (filter === 'topup') {
       matchType = typeLower.includes('topup') || typeLower.includes('top-up');
-    } else if (filter === 'marketplace') {
-      matchType = typeLower.includes('marketplace') || typeLower.includes('purchase');
     } else {
       matchType = typeLower.includes(filter);
     }
@@ -65,7 +63,6 @@ export default function TransactionsPage() {
     const tLower = type.toLowerCase();
     if (tLower.includes('giving')) return 'badge-danger';
     if (tLower.includes('topup') || tLower.includes('top-up')) return 'badge-success';
-    if (tLower.includes('marketplace') || tLower.includes('purchase')) return 'badge-info';
     if (tLower.includes('airtime')) return 'badge-warning';
     return 'badge-neutral';
   };

@@ -3,20 +3,18 @@ import 'package:flutter/material.dart';
 import '../services/purchase_airtime_service.dart';
 
 void processVoucherPayment(
-    BuildContext context,
-    String voucherCode,
-    int productCode,
-    int amount,
-    ) async {
+  BuildContext context,
+  String voucherCode,
+  int productCode,
+  int amount,
+) async {
   final airtimeService = PurchaseAirtimeService();
 
   showDialog(
     context: context,
     barrierDismissible: false,
     builder: (context) => AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -24,7 +22,7 @@ void processVoucherPayment(
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: const Color(0xFF8B7355).withOpacity(0.1),
+              color: const Color(0xFF8B7355).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(40),
             ),
             child: const Icon(
@@ -36,10 +34,7 @@ void processVoucherPayment(
           const SizedBox(height: 20),
           const Text(
             'Processing Purchase',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
@@ -56,7 +51,7 @@ void processVoucherPayment(
             height: 50,
             child: CircularProgressIndicator(
               valueColor: AlwaysStoppedAnimation<Color>(
-                const Color(0xFF8B7355).withOpacity(0.8),
+                const Color(0xFF8B7355).withValues(alpha: 0.8),
               ),
             ),
           ),
@@ -88,9 +83,7 @@ void processVoucherPayment(
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            '✗ ${result['message'] ?? 'Purchase failed'}',
-          ),
+          content: Text('✗ ${result['message'] ?? 'Purchase failed'}'),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 3),
         ),

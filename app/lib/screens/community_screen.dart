@@ -9,7 +9,6 @@ import '../data/society_model.dart';
 import '../services/society_service.dart';
 import 'society_selection_screen.dart';
 
-
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
 
@@ -68,10 +67,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
           await FirebaseFirestore.instance
               .collection('users')
               .doc(userId)
-              .update({
-            'society': society.name,
-            'society_id': society.id,
-          });
+              .update({'society': society.name, 'society_id': society.id});
         }
 
         setState(() {
@@ -91,7 +87,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => SocietySelectionPage(currentSociety: userSociety?.name ?? '',),
+        builder: (context) =>
+            SocietySelectionPage(currentSociety: userSociety?.name ?? ''),
       ),
     ).then((_) {
       _loadUserSociety();
@@ -103,9 +100,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Leave Society?'),
-        content: Text(
-          'Are you sure you want to leave ${userSociety?.name}?',
-        ),
+        content: Text('Are you sure you want to leave ${userSociety?.name}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -132,10 +127,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('user_society');
 
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .update({'society': FieldValue.delete()});
+      await FirebaseFirestore.instance.collection('users').doc(userId).update({
+        'society': FieldValue.delete(),
+      });
 
       setState(() {
         userSociety = null;
@@ -166,10 +160,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
               const SizedBox(height: 16),
               Text(
                 'Loading community...',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               ),
             ],
           ),
@@ -208,7 +199,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     width: 120,
                     height: 120,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF3B0D11).withOpacity(0.15),
+                      color: const Color(0xFF3B0D11).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(60),
                     ),
                     child: const Icon(
@@ -240,10 +231,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF3B0D11).withOpacity(0.08),
+                      color: const Color(0xFF3B0D11).withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: const Color(0xFF3B0D11).withOpacity(0.2),
+                        color: const Color(0xFF3B0D11).withValues(alpha: 0.2),
                       ),
                     ),
                     child: Column(
@@ -339,7 +330,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
+                      color: Colors.black.withValues(alpha: 0.08),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -352,7 +343,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                       width: double.infinity,
                       height: 180,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF3B0D11).withOpacity(0.15),
+                        color: const Color(0xFF3B0D11).withValues(alpha: 0.15),
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(16),
                           topRight: Radius.circular(16),
@@ -384,7 +375,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                               vertical: 5,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF3B0D11).withOpacity(0.15),
+                              color: const Color(
+                                0xFF3B0D11,
+                              ).withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
@@ -403,7 +396,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                               vertical: 8,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF3B0D11).withOpacity(0.1),
+                              color: const Color(
+                                0xFF3B0D11,
+                              ).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
@@ -441,7 +436,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -459,15 +454,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    _buildInfoRow(
-                      'Circuit',
-                      userSociety!.circuit ?? '—',
-                    ),
+                    _buildInfoRow('Circuit', userSociety!.circuit ?? '—'),
                     const SizedBox(height: 12),
-                    _buildInfoRow(
-                      'Location',
-                      userSociety!.location ?? '—',
-                    ),
+                    _buildInfoRow('Location', userSociety!.location ?? '—'),
                   ],
                 ),
               ),
@@ -481,7 +470,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -526,7 +515,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 child: ElevatedButton(
                   onPressed: _leaveSociety,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red.withOpacity(0.1),
+                    backgroundColor: Colors.red.withValues(alpha: 0.1),
                     foregroundColor: Colors.red,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
@@ -536,10 +525,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   ),
                   child: const Text(
                     'Leave Community',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -555,19 +541,18 @@ class _CommunityScreenState extends State<CommunityScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.grey[600],
-          ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF3B0D11),
+        Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF3B0D11),
+            ),
           ),
         ),
       ],
@@ -577,19 +562,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
   Widget _buildContactRow(IconData icon, String value) {
     return Row(
       children: [
-        Icon(
-          icon,
-          color: const Color(0xFF3B0D11),
-          size: 16,
-        ),
+        Icon(icon, color: const Color(0xFF3B0D11), size: 16),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF3B0D11),
-            ),
+            style: const TextStyle(fontSize: 12, color: Color(0xFF3B0D11)),
           ),
         ),
       ],

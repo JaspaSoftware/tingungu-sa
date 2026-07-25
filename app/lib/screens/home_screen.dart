@@ -2,13 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'giving_page.dart';
-import 'store_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'profile_screen.dart';
 import 'notices_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 import 'dart:convert';
+import '../utils/avatar_utils.dart';
 import '../data/event_model.dart';
 
 import '../data/scripture_model.dart';
@@ -19,7 +20,9 @@ import 'community_screen.dart';
 import 'events_screen.dart';
 import 'media_screen.dart';
 import 'top_up_wallet.dart';
-import '../components/chatbot_widget.dart';
+import 'transactions_screen.dart';
+import 'login_screen.dart';
+import '../services/user_service.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -40,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String userPhone = '';
   String userAvatar = '';
   String timeGreeting = 'Good Morning';
+  StreamSubscription<DocumentSnapshot>? _userSubscription;
 
   bool _isLoadingProfile = true;
 
@@ -109,24 +113,31 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool _profileCompleted = true;
 
-  Future<void> _loadUserProfile() async {
+  void _loadUserProfile() {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-        if (doc.exists) {
-          final userData = doc.data() ?? {};
-          if (mounted) {
+        _userSubscription?.cancel();
+        _userSubscription = FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .snapshots()
+            .listen((snapshot) {
+          if (snapshot.exists && mounted) {
+            final userData = snapshot.data() as Map<String, dynamic>? ?? {};
             setState(() {
               userName = userData['displayname'] ?? 'Guest';
               userAvatar = userData['avatar'] ?? '';
               _profileCompleted = userData['profile_completed'] ?? false;
               _isLoadingProfile = false;
             });
+          } else {
+            if (mounted) setState(() => _isLoadingProfile = false);
           }
-        } else {
+        }, onError: (e) {
+          if (kDebugMode) print('Error loading profile stream: $e');
           if (mounted) setState(() => _isLoadingProfile = false);
-        }
+        });
       } else {
         if (mounted) setState(() => _isLoadingProfile = false);
       }
@@ -134,6 +145,12 @@ class _HomeScreenState extends State<HomeScreen> {
       if (kDebugMode) print('Error loading profile: $e');
       if (mounted) setState(() => _isLoadingProfile = false);
     }
+  }
+
+  @override
+  void dispose() {
+    _userSubscription?.cancel();
+    super.dispose();
   }
 
   @override
@@ -229,18 +246,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       bottomNavigationBar: _buildBottomNav(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (context) => const ChatbotWidget(),
-          );
-        },
-        backgroundColor: const Color(0xFF3B0D11),
-        child: const Icon(Icons.smart_toy_outlined, color: Colors.white),
-      ),
     );
   }
 
@@ -292,19 +297,44 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance.collection('notices').snapshots(),
-                builder: (context, snapshot) {
-                  int count = snapshot.hasData ? snapshot.data!.docs.length : 0;
-                  return Badge(
-                    label: Text(count.toString()),
-                    isLabelVisible: count > 0,
-                    child: const Icon(
-                      Icons.notifications_outlined,
-                      color: Color(0xFFFB8B24),
-                    ),
+              child: Builder(
+                builder: (context) {
+                  final user = FirebaseAuth.instance.currentUser;
+                  if (user == null) {
+                    return const Icon(Icons.notifications_outlined, color: Color(0xFFFB8B24));
+                  }
+
+                  return StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
+                    builder: (context, userSnap) {
+                      final userData = userSnap.data?.data() as Map<String, dynamic>? ?? {};
+                      final List<dynamic> readNotices = userData['read_notices'] ?? [];
+                      final Set<String> readIds = readNotices.map((e) => e.toString()).toSet();
+
+                      return StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance.collection('notices').snapshots(),
+                        builder: (context, noticesSnap) {
+                          int unreadCount = 0;
+                          if (noticesSnap.hasData) {
+                            for (var doc in noticesSnap.data!.docs) {
+                              if (!readIds.contains(doc.id)) {
+                                unreadCount++;
+                              }
+                            }
+                          }
+                          return Badge(
+                            label: Text(unreadCount.toString()),
+                            isLabelVisible: unreadCount > 0,
+                            child: const Icon(
+                              Icons.notifications_outlined,
+                              color: Color(0xFFFB8B24),
+                            ),
+                          );
+                        },
+                      );
+                    },
                   );
-                }
+                },
               ),
             ),
           ),
@@ -375,7 +405,14 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(dailyScripture!.reference, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFFB8B24))),
+              Expanded(
+                child: Text(
+                  dailyScripture!.reference,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFFB8B24)),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
               Text(dailyScripture!.translation, style: TextStyle(fontSize: 10, color: Colors.grey[500])),
             ],
           ),
@@ -389,7 +426,7 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Marketplace',
+          'Digital Services',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -403,20 +440,6 @@ class _HomeScreenState extends State<HomeScreen> {
           subtitle: 'Buy data, airtime, electricity and digital subscriptions',
           color: const Color(0xFFFB8B24),
           onTap: () => _showVASBottomSheet(),
-        ),
-        _buildMarketplaceTile(
-          icon: Icons.store_mall_directory_outlined,
-          title: 'Tingungu Mall',
-          subtitle: 'Shop for church merchandise, accessories, and local goods.',
-          color: const Color(0xFFFB8B24),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const StoreScreen(),
-              ),
-            );
-          },
         ),
       ],
     );
@@ -486,194 +509,327 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
-  }
-
-  Widget _buildDrawer() {
+  }  Widget _buildDrawer() {
+    final topPadding = MediaQuery.of(context).padding.top;
     return Drawer(
       backgroundColor: const Color(0xFFFAF9F6),
       child: Column(
         children: [
+          // Sticky Profile Header
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
-            decoration: const BoxDecoration(
-              color: Color(0xFF3B0D11),
+            padding: EdgeInsets.fromLTRB(20, topPadding + 20, 20, 20),
+            decoration: BoxDecoration(
+              color: const Color(0xFF3B0D11),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
                 Container(
-                  width: 60,
-                  height: 60,
+                  width: 54,
+                  height: 54,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(30),
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
                   ),
-                  child: userAvatar.isNotEmpty
-                      ? CircleAvatar(
-                          backgroundImage: NetworkImage(userAvatar),
-                        )
-                      : const Icon(Icons.person, color: Colors.white, size: 35),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  userName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                  child: CircleAvatar(
+                    key: ValueKey(userAvatar),
+                    backgroundImage: AvatarUtils.getAvatarImageProviderOrDefault(userAvatar),
                   ),
                 ),
-                const Text(
-                  'Tingungu Member',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        userName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        FirebaseAuth.instance.currentUser != null
+                            ? 'Tingungu Member'
+                            : 'Browsing as Guest',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
+
+          // Scrollable Sections sliding underneath the Sticky Profile Header
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
-                _drawerItem('Edit Profile', Icons.person_outline),
-                _drawerItem('About Tingungu', Icons.info_outline),
-                _drawerItem('Give', Icons.favorite_outline),
-                _drawerItem('My Cart', Icons.shopping_cart_outlined),
-                _drawerItem('Transactions', Icons.history),
-                _drawerItem('Settings', Icons.settings),
-                const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.volunteer_activism, color: Color(0xFFFB8B24)),
-                  title: const Text('Seed Giving Options', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _seedGivingOptions();
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.notification_add_outlined, color: Color(0xFFFB8B24)),
-                  title: const Text('Seed Notices', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _seedNotices();
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.video_collection_outlined, color: Color(0xFFFB8B24)),
-                  title: const Text('Seed Media Data', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _seedMediaData();
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.data_saver_on, color: Color(0xFFFB8B24)),
-                  title: const Text('Seed Marketplace Data', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _seedMarketplaceData();
-                  },
-                ),
-              ],
-            ),
+                // Main App Navigation Section
+                _buildDrawerSectionHeader('NAVIGATION'),
+          _drawerItem(
+            'Home',
+            Icons.home_outlined,
+            onTap: () {
+              Navigator.pop(context);
+              setState(() => _currentIndex = 0);
+            },
+            isActive: _currentIndex == 0,
           ),
+          _drawerItem(
+            'Community',
+            Icons.people_outline,
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CommunityScreen()),
+              );
+            },
+          ),
+          _drawerItem(
+            'Tingungu TV & Media',
+            Icons.video_library_outlined,
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MediaScreen()),
+              );
+            },
+          ),
+          _drawerItem(
+            'Events & Calendar',
+            Icons.event_outlined,
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const EventsScreen()),
+              );
+            },
+          ),
+
+          const Divider(height: 24),
+          _buildDrawerSectionHeader('SERVICES & GIVING'),
+          _drawerItem(
+            'Give & Pledges',
+            Icons.favorite_outline,
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const GivingPage()),
+              );
+            },
+          ),
+          _drawerItem(
+            'Buy Airtime & Utilities',
+            Icons.phone_android_outlined,
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const BuyAirtimeScreen()),
+              );
+            },
+          ),
+          _drawerItem(
+            'Top Up Wallet',
+            Icons.account_balance_wallet_outlined,
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const TopUpWalletScreen()),
+              );
+            },
+          ),
+
+          const Divider(height: 24),
+          _buildDrawerSectionHeader('ACCOUNT'),
+          _drawerItem(
+            'Edit Profile',
+            Icons.person_outline,
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfilePage()),
+              );
+            },
+          ),
+          _drawerItem(
+            'Transaction History',
+            Icons.history,
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const TransactionsScreen()),
+              );
+            },
+          ),
+          _drawerItem(
+            'About Tingungu',
+            Icons.info_outline,
+            onTap: () {
+              Navigator.pop(context);
+              launchUrl(
+                Uri.parse('https://www.tingungu.co.za/index.html'),
+                mode: LaunchMode.externalApplication,
+              );
+            },
+          ),
+
+          const Divider(height: 24),
+          ExpansionTile(
+            leading: const Icon(Icons.build_circle_outlined, color: Color(0xFFFB8B24)),
+            title: const Text(
+              'Developer & Seed Tools',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF3B0D11)),
+            ),
+            children: [
+              ListTile(
+                dense: true,
+                leading: const Icon(Icons.refresh, size: 18, color: Color(0xFFFB8B24)),
+                title: const Text('Seed Giving Options', style: TextStyle(fontSize: 13)),
+                onTap: () { Navigator.pop(context); _seedGivingOptions(); },
+              ),
+              ListTile(
+                dense: true,
+                leading: const Icon(Icons.refresh, size: 18, color: Color(0xFFFB8B24)),
+                title: const Text('Seed Notices', style: TextStyle(fontSize: 13)),
+                onTap: () { Navigator.pop(context); _seedNotices(); },
+              ),
+              ListTile(
+                dense: true,
+                leading: const Icon(Icons.refresh, size: 18, color: Color(0xFFFB8B24)),
+                title: const Text('Seed Media Data', style: TextStyle(fontSize: 13)),
+                onTap: () { Navigator.pop(context); _seedMediaData(); },
+              ),
+              ListTile(
+                dense: true,
+                leading: const Icon(Icons.refresh, size: 18, color: Color(0xFFFB8B24)),
+                title: const Text('Seed Events Data', style: TextStyle(fontSize: 13)),
+                onTap: () { Navigator.pop(context); _seedEventsData(); },
+              ),
+              ListTile(
+                dense: true,
+                leading: const Icon(Icons.refresh, size: 18, color: Color(0xFFFB8B24)),
+                title: const Text('Seed Societies Data', style: TextStyle(fontSize: 13)),
+                onTap: () { Navigator.pop(context); _seedSocietiesData(); },
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Column(
               children: [
-                const Text(
-                  'v1.0.0',
-                  style: TextStyle(color: Colors.grey, fontSize: 10),
-                ),
-                const Text(
-                  'Developer: Jaspa Software',
-                  style: TextStyle(color: Colors.grey, fontSize: 10),
-                ),
-                const SizedBox(height: 12),
-                ListTile(
-                  leading: const Icon(Icons.refresh, color: Color(0xFFFB8B24)),
-                  title: const Text('Seed Media', style: TextStyle(fontSize: 14)),
-                  onTap: () { Navigator.pop(context); _seedMediaData(); },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.refresh, color: Color(0xFFFB8B24)),
-                  title: const Text('Seed Notices', style: TextStyle(fontSize: 14)),
-                  onTap: () { Navigator.pop(context); _seedNotices(); },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.refresh, color: Color(0xFFFB8B24)),
-                  title: const Text('Seed Giving', style: TextStyle(fontSize: 14)),
-                  onTap: () { Navigator.pop(context); _seedGivingOptions(); },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.refresh, color: Color(0xFFFB8B24)),
-                  title: const Text('Seed Marketplace', style: TextStyle(fontSize: 14)),
-                  onTap: () { Navigator.pop(context); _seedMarketplaceData(); },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.refresh, color: Color(0xFFFB8B24)),
-                  title: const Text('Seed Events', style: TextStyle(fontSize: 14)),
-                  onTap: () { Navigator.pop(context); _seedEventsData(); },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.refresh, color: Color(0xFFFB8B24)),
-                  title: const Text('Seed Societies', style: TextStyle(fontSize: 14)),
-                  onTap: () { Navigator.pop(context); _seedSocietiesData(); },
-                ),
-                const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () async {
+                      await UserService.signOutUser();
+                      await FirebaseAuth.instance.signOut();
                       final prefs = await SharedPreferences.getInstance();
                       await prefs.remove('user_profile');
                       if (mounted) {
-                        Navigator.pop(context);
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          (route) => false,
+                        );
                       }
                     },
-                    icon: const Icon(Icons.logout),
+                    icon: const Icon(Icons.logout, size: 18),
                     label: const Text('Logout'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFB8B24),
                       foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
                   ),
                 ),
+                const SizedBox(height: 12),
+                const Text(
+                  'v1.0.0 • Developer: Jaspa Software',
+                  style: TextStyle(color: Colors.grey, fontSize: 11),
+                ),
               ],
             ),
           ),
+          const SizedBox(height: 16),
         ],
+      ),
+    ),
+  ],
+),
+);
+}
+
+  Widget _buildDrawerSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey[600],
+          letterSpacing: 1.0,
+        ),
       ),
     );
   }
 
-  Widget _drawerItem(String title, IconData icon) {
-    return ListTile(
-      leading: Icon(icon, color: const Color(0xFFFB8B24)),
-      title: Text(
-        title,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+  Widget _drawerItem(
+    String title,
+    IconData icon, {
+    required VoidCallback onTap,
+    bool isActive = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      child: ListTile(
+        leading: Icon(
+          icon,
+          color: isActive ? const Color(0xFFFB8B24) : const Color(0xFF3B0D11),
+          size: 22,
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+            color: isActive ? const Color(0xFFFB8B24) : const Color(0xFF3B0D11),
+          ),
+        ),
+        selected: isActive,
+        selectedTileColor: const Color(0xFFFB8B24).withOpacity(0.1),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        onTap: onTap,
       ),
-      onTap: () {
-        Navigator.pop(context);
-        if (title == 'Edit Profile') {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfilePage()));
-        } else if (title == 'About Tingungu') {
-          launchUrl(Uri.parse('https://www.tingungu.co.za/index.html'), mode: LaunchMode.externalApplication);
-        } else if (title == 'Give') {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const GivingPage()));
-        } else if (title == 'My Cart') {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const StoreScreen(showCart: true)));
-        } else if (title == 'Transactions') {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage()));
-        }
-      },
     );
   }
 
@@ -771,7 +927,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      child: BottomNavigationBar(
+      child: SafeArea(
+        top: false,
+        child: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
           if (index == 1) {
@@ -832,7 +990,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 
 
@@ -929,41 +1088,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _seedMarketplaceData() async {
-    showDialog(context: context, builder: (_) => const Center(child: CircularProgressIndicator()));
-    final products = [
-      {"name": "Bible - KJV", "price": 150},
-      {"name": "Bible - Xhosa", "price": 180},
-      {"name": "Song Book", "price": 80},
-      {"name": "Sunday Hat", "price": 120},
-      {"name": "Church T-Shirt", "price": 200},
-      {"name": "Branded Cup", "price": 50},
-      {"name": "Worship CD", "price": 100},
-      {"name": "Prayer Journal", "price": 60},
-      {"name": "Church Pin", "price": 20},
-      {"name": "Umbrella", "price": 90},
-      {"name": "Scarf", "price": 70},
-      {"name": "Wristband", "price": 25},
-      {"name": "Necklace", "price": 40},
-      {"name": "Offering Envelope", "price": 15},
-      {"name": "Church Flag", "price": 130},
-      {"name": "Backpack", "price": 250},
-      {"name": "Notebook", "price": 35},
-      {"name": "Sermon USB", "price": 90},
-      {"name": "Bookmark", "price": 10},
-      {"name": "Worship Hoodie", "price": 300},
-    ];
-    final batch = FirebaseFirestore.instance.batch();
-    for (var p in products) {
-      final docRef = FirebaseFirestore.instance.collection('products').doc();
-      batch.set(docRef, p);
-    }
-    await batch.commit();
-    if (mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Seeded 20 products!')));
-    }
-  }
+
 
   Future<void> _seedEventsData() async {
     showDialog(context: context, builder: (_) => const Center(child: CircularProgressIndicator()));
@@ -1073,73 +1198,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _showBuyBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      backgroundColor: const Color(0xFFFAF9F6),
-      builder: (context) => SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            height: 4,
-            width: 40,
-            margin: const EdgeInsets.only(top: 12),
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'What would you like to buy?',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF3B0D11),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _buildBuyOption(
-                  title: 'Marketplace',
-                  description: 'Buy goods and products from church members',
-                  icon: Icons.shopping_bag_outlined,
-                  color: const Color(0xFFFB8B24),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const StoreScreen()));
-                  },
-                ),
-                const SizedBox(height: 12),
-                _buildBuyOption(
-                  title: 'Value Added Services',
-                  description:
-                  'Buy electricity, airtime, and other digital products',
-                  icon: Icons.bolt_outlined,
-                  color: const Color(0xFFFB8B24),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showVASBottomSheet();
-                  },
-                ),
-                const SizedBox(height: 12),
-              ],
-            ),
-          ),
-        ],
-      ),
-      ),
-    );
-  }
+
 
   void _showVASBottomSheet() {
     showModalBottomSheet(
@@ -1149,110 +1208,112 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       backgroundColor: const Color(0xFFFAF9F6),
-      builder: (context) => SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            height: 4,
-            width: 40,
-            margin: const EdgeInsets.only(top: 12),
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(2),
-            ),
+      builder: (context) => SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                height: 4,
+                width: 40,
+                margin: const EdgeInsets.only(top: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'What do you need?',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF3B0D11),
+                      ),
+                    ),
+                    const Text(
+                      'Choose a service to purchase',
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 20),
+                    _buildVASOption(
+                      title: 'Airtime',
+                      description: 'Top up airtime for any network',
+                      icon: Icons.phone_outlined,
+                      color: const Color(0xFFFB8B24),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const BuyAirtimeScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _buildVASOption(
+                      title: 'Data',
+                      description: 'Purchase data bundles',
+                      icon: Icons.wifi_outlined,
+                      color: const Color(0xFFFB8B24),
+                      onTap: () {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Opening Data Purchase'),
+                            backgroundColor: Color(0xFFFB8B24),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _buildVASOption(
+                      title: 'Electricity',
+                      description: 'Buy electricity tokens',
+                      icon: Icons.bolt_outlined,
+                      color: const Color(0xFFFB8B24),
+                      onTap: () {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Opening Electricity Purchase'),
+                            backgroundColor: Color(0xFFFB8B24),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _buildVASOption(
+                      title: 'Voucher',
+                      description: 'Purchase gift and scratch vouchers',
+                      icon: Icons.card_giftcard_outlined,
+                      color: const Color(0xFFFB8B24),
+                      onTap: () {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Opening Voucher Purchase'),
+                            backgroundColor: Color(0xFFFB8B24),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              ),
+            ],
           ),
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'What do you need?',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF3B0D11),
-                  ),
-                ),
-                const Text(
-                  'Choose a service to purchase',
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-                const SizedBox(height: 20),
-                _buildVASOption(
-                  title: 'Airtime',
-                  description: 'Top up airtime for any network',
-                  icon: Icons.phone_outlined,
-                  color: const Color(0xFFFB8B24),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const BuyAirtimeScreen(),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-                _buildVASOption(
-                  title: 'Data',
-                  description: 'Purchase data bundles',
-                  icon: Icons.wifi_outlined,
-                  color: const Color(0xFFFB8B24),
-                  onTap: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Opening Data Purchase'),
-                        backgroundColor: Color(0xFFFB8B24),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-                _buildVASOption(
-                  title: 'Electricity',
-                  description: 'Buy electricity tokens',
-                  icon: Icons.bolt_outlined,
-                  color: const Color(0xFFFB8B24),
-                  onTap: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Opening Electricity Purchase'),
-                        backgroundColor: Color(0xFFFB8B24),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-                _buildVASOption(
-                  title: 'Voucher',
-                  description: 'Purchase gift and scratch vouchers',
-                  icon: Icons.card_giftcard_outlined,
-                  color: const Color(0xFFFB8B24),
-                  onTap: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Opening Voucher Purchase'),
-                        backgroundColor: Color(0xFFFB8B24),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
       ),
     );
   }
@@ -1324,70 +1385,5 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBuyOption({
-    required String title,
-    required String description,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-          border: Border.all(color: color.withOpacity(0.2)),
-        ),
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 28),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF3B0D11),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    description,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Icon(Icons.arrow_forward_ios, color: color, size: 18),
-          ],
-        ),
-      ),
-    );
-  }
+
 }

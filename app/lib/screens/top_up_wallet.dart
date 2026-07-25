@@ -36,20 +36,29 @@ class _TopUpWalletScreenState extends State<TopUpWalletScreen> {
   void _continueToPayment() {
     if (_amountController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter an amount'), backgroundColor: Color(0xFF3B0D11)),
+        const SnackBar(
+          content: Text('Please enter an amount'),
+          backgroundColor: Color(0xFF3B0D11),
+        ),
       );
       return;
     }
     if (!_agreedToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please agree to the terms and conditions'), backgroundColor: Color(0xFF3B0D11)),
+        const SnackBar(
+          content: Text('Please agree to the terms and conditions'),
+          backgroundColor: Color(0xFF3B0D11),
+        ),
       );
       return;
     }
     final amount = double.tryParse(_amountController.text);
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid amount'), backgroundColor: Color(0xFF3B0D11)),
+        const SnackBar(
+          content: Text('Please enter a valid amount'),
+          backgroundColor: Color(0xFF3B0D11),
+        ),
       );
       return;
     }
@@ -57,13 +66,23 @@ class _TopUpWalletScreenState extends State<TopUpWalletScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Choose Payment Method', style: TextStyle(color: Color(0xFF3B0D11))),
+        title: const Text(
+          'Choose Payment Method',
+          style: TextStyle(color: Color(0xFF3B0D11)),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.g_mobiledata, color: Color(0xFFFB8B24), size: 40),
-              title: const Text('Google Pay', style: TextStyle(fontWeight: FontWeight.bold)),
+              leading: const Icon(
+                Icons.g_mobiledata,
+                color: Color(0xFFFB8B24),
+                size: 40,
+              ),
+              title: const Text(
+                'Google Pay',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _processGooglePay(amount);
@@ -72,7 +91,10 @@ class _TopUpWalletScreenState extends State<TopUpWalletScreen> {
             const Divider(),
             ListTile(
               leading: const Icon(Icons.payment, color: Color(0xFFFB8B24)),
-              title: const Text('PayFast', style: TextStyle(fontWeight: FontWeight.bold)),
+              title: const Text(
+                'PayFast',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -90,7 +112,8 @@ class _TopUpWalletScreenState extends State<TopUpWalletScreen> {
                         'm_payment_id': '01AB',
                         'amount': amount.toString(),
                         'item_name': 'Wallet Top Up',
-                        'item_description': 'Tingungu App Wallet Balance Top Up',
+                        'item_description':
+                            'Tingungu App Wallet Balance Top Up',
                       },
                     ),
                   ),
@@ -104,8 +127,7 @@ class _TopUpWalletScreenState extends State<TopUpWalletScreen> {
   }
 
   final _payClient = Pay({
-    PayProvider.google_pay: PaymentConfiguration.fromJsonString(
-      '''{
+    PayProvider.google_pay: PaymentConfiguration.fromJsonString('''{
         "provider": "google_pay",
         "data": {
           "environment": "TEST",
@@ -141,50 +163,57 @@ class _TopUpWalletScreenState extends State<TopUpWalletScreen> {
             "currencyCode": "ZAR"
           }
         }
-      }'''
-    )
+      }'''),
   });
 
   Future<void> _processGooglePay(double amount) async {
     try {
-      final result = await _payClient.showPaymentSelector(
-        PayProvider.google_pay,
-        [
-          PaymentItem(
-            label: 'Wallet Top Up',
-            amount: amount.toStringAsFixed(2),
-            status: PaymentItemStatus.final_price,
-          )
-        ],
-      );
+      final result = await _payClient
+          .showPaymentSelector(PayProvider.google_pay, [
+            PaymentItem(
+              label: 'Wallet Top Up',
+              amount: amount.toStringAsFixed(2),
+              status: PaymentItemStatus.final_price,
+            ),
+          ]);
 
       // result contains payment token/details.
       // If we reach here, Google Pay sheet was successful.
-      
+
       if (!mounted) return;
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator(color: Color(0xFFFB8B24))),
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: Color(0xFFFB8B24)),
+        ),
       );
 
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        final docRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+        final docRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid);
         await FirebaseFirestore.instance.runTransaction((transaction) async {
           final snapshot = await transaction.get(docRef);
           if (!snapshot.exists) {
             throw Exception("User profile not found.");
           }
-          final double currentBalance = (snapshot.data()?['wallet_balance'] ?? 0.0).toDouble();
-          transaction.update(docRef, {'wallet_balance': currentBalance + amount});
+          final double currentBalance =
+              (snapshot.data()?['wallet_balance'] ?? 0.0).toDouble();
+          transaction.update(docRef, {
+            'wallet_balance': currentBalance + amount,
+          });
         });
       }
 
       if (mounted) {
         Navigator.pop(context); // hide loading
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Top up successful!'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Top up successful!'),
+            backgroundColor: Colors.green,
+          ),
         );
         Navigator.pop(context); // return to previous screen
       }
@@ -192,12 +221,14 @@ class _TopUpWalletScreenState extends State<TopUpWalletScreen> {
       if (kDebugMode) print('Google Pay Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Payment cancelled or failed.'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Payment cancelled or failed.'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -251,7 +282,7 @@ class _TopUpWalletScreenState extends State<TopUpWalletScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFB8B24).withOpacity(0.15),
+            color: const Color(0xFFFB8B24).withValues(alpha: 0.15),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -267,7 +298,7 @@ class _TopUpWalletScreenState extends State<TopUpWalletScreen> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFB8B24).withOpacity(0.1),
+                  color: const Color(0xFFFB8B24).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
@@ -356,7 +387,7 @@ class _TopUpWalletScreenState extends State<TopUpWalletScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFB8B24).withOpacity(0.15),
+            color: const Color(0xFFFB8B24).withValues(alpha: 0.15),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -394,10 +425,7 @@ class _TopUpWalletScreenState extends State<TopUpWalletScreen> {
                 color: Color(0xFFFB8B24),
               ),
               hintText: '0.00',
-              hintStyle: TextStyle(
-                fontSize: 32,
-                color: Colors.grey[300],
-              ),
+              hintStyle: TextStyle(fontSize: 32, color: Colors.grey[300]),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: Colors.grey[300]!),
@@ -408,7 +436,10 @@ class _TopUpWalletScreenState extends State<TopUpWalletScreen> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFFB8B24), width: 2),
+                borderSide: const BorderSide(
+                  color: Color(0xFFFB8B24),
+                  width: 2,
+                ),
               ),
               filled: true,
               fillColor: const Color(0xFFFAF9F6),
@@ -445,19 +476,24 @@ class _TopUpWalletScreenState extends State<TopUpWalletScreen> {
             return GestureDetector(
               onTap: () => _selectQuickAmount(amount),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected ? const Color(0xFFFB8B24) : Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isSelected ? const Color(0xFFFB8B24) : Colors.grey[300]!,
+                    color: isSelected
+                        ? const Color(0xFFFB8B24)
+                        : Colors.grey[300]!,
                     width: isSelected ? 2 : 1,
                   ),
                   boxShadow: [
                     BoxShadow(
                       color: isSelected
-                          ? const Color(0xFFFB8B24).withOpacity(0.3)
-                          : Colors.black.withOpacity(0.05),
+                          ? const Color(0xFFFB8B24).withValues(alpha: 0.3)
+                          : Colors.black.withValues(alpha: 0.05),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -484,7 +520,9 @@ class _TopUpWalletScreenState extends State<TopUpWalletScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFFFF9E6),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFB8B24).withOpacity(0.3)),
+        border: Border.all(
+          color: const Color(0xFFFB8B24).withValues(alpha: 0.3),
+        ),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -511,10 +549,10 @@ class _TopUpWalletScreenState extends State<TopUpWalletScreen> {
           const SizedBox(height: 12),
           Text(
             '• Minimum top-up amount is R 10.00\n'
-                '• Maximum top-up amount is R 5,000.00\n'
-                '• Funds will be available immediately\n'
-                '• All transactions are secure and encrypted\n'
-                '• Top-ups are non-refundable once processed',
+            '• Maximum top-up amount is R 5,000.00\n'
+            '• Funds will be available immediately\n'
+            '• All transactions are secure and encrypted\n'
+            '• Top-ups are non-refundable once processed',
             style: TextStyle(
               fontSize: 13,
               color: Colors.grey[700],
@@ -543,7 +581,9 @@ class _TopUpWalletScreenState extends State<TopUpWalletScreen> {
               color: _agreedToTerms ? const Color(0xFFFB8B24) : Colors.white,
               borderRadius: BorderRadius.circular(6),
               border: Border.all(
-                color: _agreedToTerms ? const Color(0xFFFB8B24) : Colors.grey[400]!,
+                color: _agreedToTerms
+                    ? const Color(0xFFFB8B24)
+                    : Colors.grey[400]!,
                 width: 2,
               ),
             ),
@@ -601,7 +641,7 @@ class _TopUpWalletScreenState extends State<TopUpWalletScreen> {
             borderRadius: BorderRadius.circular(12),
           ),
           elevation: 2,
-          shadowColor: const Color(0xFFFB8B24).withOpacity(0.4),
+          shadowColor: const Color(0xFFFB8B24).withValues(alpha: 0.4),
         ),
         child: const Text(
           'Continue to Payment',

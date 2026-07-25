@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'home_screen.dart';
+import 'login_screen.dart';
 import 'terms_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -91,7 +92,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _signInWithGoogle() async {
     setState(() => _isLoading = true);
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      final GoogleSignInAccount? googleUser = await GoogleSignIn(
+        serverClientId: '226294099341-d6n78vt0atgifcgmignq528bvfhq9t0u.apps.googleusercontent.com',
+      ).signIn();
       if (googleUser == null) {
         setState(() => _isLoading = false);
         return;
@@ -251,6 +254,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: const Text("Continue with Email", style: TextStyle(fontSize: 16)),
                     ),
                   ),
+                  /*
                   const SizedBox(height: 15),
                   const Text("OR", style: TextStyle(color: Colors.grey)),
                   const SizedBox(height: 15),
@@ -269,27 +273,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                   ),
+                  */
 
                   const SizedBox(height: 15),
 
                   /// ✅ ALREADY HAVE ACCOUNT?
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text("Already have an account? "),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.pushNamed(context, 'loginScreen');
-                        },
-                        child: const Text(
-                          "Login",
-                          style: TextStyle(
-                            color: Color(0xFFFB8B24),
-                            fontWeight: FontWeight.bold,
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => const LoginScreen()),
+                      );
+                    },
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text("Already have an account? "),
+                          Text(
+                            "Login",
+                            style: TextStyle(
+                              color: Color(0xFFFB8B24),
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
 
                   const SizedBox(height: 40),

@@ -64,9 +64,10 @@ class SocietyService {
       String societyName,
       ) async {
     try {
-      await _db.collection('users').doc(userId).update({
+      await _db.collection('users').doc(userId).set({
         'society': societyName,
-      });
+        'society_name': societyName,
+      }, SetOptions(merge: true));
 
       return {
         'success': true,
@@ -87,22 +88,33 @@ class SocietyService {
   static Future<Society?> getUserSociety(String userId) async {
     try {
       final userDoc = await _db.collection('users').doc(userId).get();
-      if (userDoc.exists && userDoc.data()?.containsKey('society') == true) {
-        final societyName = userDoc.data()!['society'];
+      if (userDoc.exists && userDoc.data() != null) {
+        final data = userDoc.data()!;
+        final societyName = (data['society'] ?? data['society_name'])?.toString();
         
-        // Find the society object by name
-        final snapshot = await _db
-            .collection('societies')
-            .where('name', isEqualTo: societyName)
-            .limit(1)
-            .get();
-            
-        if (snapshot.docs.isNotEmpty) {
-          return Society.fromMap(snapshot.docs.first.data(), snapshot.docs.first.id);
+        if (societyName != null && societyName.trim().isNotEmpty) {
+          final cleanName = societyName.trim();
+          
+          // Find the society object by name (case-insensitive)
+          final snapshot = await _db.collection('societies').get();
+          for (var doc in snapshot.docs) {
+            final sData = doc.data();
+            final name = sData['name']?.toString() ?? '';
+            if (name.toLowerCase() == cleanName.toLowerCase() ||
+                name.toLowerCase().contains(cleanName.toLowerCase()) ||
+                cleanName.toLowerCase().contains(name.toLowerCase())) {
+              return Society.fromMap(sData, doc.id);
+            }
+          }
+          
+          // Return a virtual society if name exists on user profile
+          return Society(
+            id: 'virtual',
+            name: cleanName,
+            circuit: 'Methodist Church',
+            location: 'Local Society',
+          );
         }
-        
-        // Return a virtual society if only name exists but not in the master list
-        return Society(id: 'virtual', name: societyName);
       }
       return null;
     } catch (e) {

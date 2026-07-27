@@ -113,21 +113,21 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           }
 
                           IconData iconData = Icons.receipt_long;
-                          Color iconBg = const Color(0xFFFB8B24).withOpacity(0.12);
+                          Color iconBg = const Color(0xFFFB8B24).withValues(alpha: 0.12);
                           Color iconColor = const Color(0xFFFB8B24);
 
                           final typeLower = type.toString().toLowerCase();
                           if (typeLower.contains('giving') || typeLower.contains('tithe') || typeLower.contains('offering')) {
                             iconData = Icons.favorite;
-                            iconBg = const Color(0xFFE53935).withOpacity(0.12);
+                            iconBg = const Color(0xFFE53935).withValues(alpha: 0.12);
                             iconColor = const Color(0xFFE53935);
                           } else if (typeLower.contains('airtime') || typeLower.contains('top-up')) {
                             iconData = Icons.phone_android;
-                            iconBg = const Color(0xFF1E88E5).withOpacity(0.12);
+                            iconBg = const Color(0xFF1E88E5).withValues(alpha: 0.12);
                             iconColor = const Color(0xFF1E88E5);
                           } else if (typeLower.contains('wallet')) {
                             iconData = Icons.account_balance_wallet;
-                            iconBg = const Color(0xFF43A047).withOpacity(0.12);
+                            iconBg = const Color(0xFF43A047).withValues(alpha: 0.12);
                             iconColor = const Color(0xFF43A047);
                           }
 
@@ -224,7 +224,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: const Color(0xFFFB8B24).withOpacity(0.1),
+                color: const Color(0xFFFB8B24).withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(

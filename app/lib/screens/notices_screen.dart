@@ -126,7 +126,7 @@ class _NoticesScreenState extends State<NoticesScreen> {
                             Container(
                               padding: const EdgeInsets.all(24),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF3B0D11).withOpacity(0.05),
+                                color: const Color(0xFF3B0D11).withValues(alpha: 0.05),
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(Icons.notifications_off_outlined, size: 80, color: Colors.grey),
@@ -172,7 +172,7 @@ class _NoticesScreenState extends State<NoticesScreen> {
                                 : const BorderSide(color: Color(0xFFFB8B24), width: 1.5),
                           ),
                           elevation: isRead ? 0 : 2,
-                          color: isRead ? Colors.white.withOpacity(0.85) : Colors.white,
+                          color: isRead ? Colors.white.withValues(alpha: 0.85) : Colors.white,
                           child: Padding(
                             padding: const EdgeInsets.all(16),
                             child: Row(
@@ -182,8 +182,8 @@ class _NoticesScreenState extends State<NoticesScreen> {
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
                                     color: isRead
-                                        ? Colors.grey.withOpacity(0.1)
-                                        : const Color(0xFFFB8B24).withOpacity(0.15),
+                                        ? Colors.grey.withValues(alpha: 0.1)
+                                        : const Color(0xFFFB8B24).withValues(alpha: 0.15),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(

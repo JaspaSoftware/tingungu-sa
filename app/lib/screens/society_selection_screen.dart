@@ -1,9 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../data/society_model.dart';
 import '../services/society_service.dart';
-
 
 class SocietySelectionPage extends StatefulWidget {
   final String currentSociety;
@@ -60,7 +61,16 @@ class _SocietySelectionPageState extends State<SocietySelectionPage> {
 
     final userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_id', userId);
+
       await SocietyService.joinSociety(userId, selectedSociety);
+
+      final selectedObj = societies.firstWhere(
+        (s) => s.name.toLowerCase() == selectedSociety.toLowerCase(),
+        orElse: () => Society(id: 'selected', name: selectedSociety),
+      );
+      await prefs.setString('user_society', jsonEncode(selectedObj.toMap()));
     }
 
     if (mounted) {

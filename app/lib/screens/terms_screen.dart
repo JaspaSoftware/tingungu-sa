@@ -47,7 +47,7 @@ class TermsScreen extends StatelessWidget {
               SizedBox(height: 30),
               Center(
                 child: Text(
-                  "© 2025 Tingungu SA (Pty) Ltd • Developed by Jaspa",
+                  "© 2026 Tingungu SA (Pty) Ltd • Developed by Jaspa",
                   style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               )

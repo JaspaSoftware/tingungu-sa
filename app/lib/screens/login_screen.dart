@@ -1,13 +1,16 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final String? initialEmail;
+  const LoginScreen({super.key, this.initialEmail});
   static const String id = "loginScreen";
 
   @override
@@ -16,7 +19,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _emailController = TextEditingController();
+  late final TextEditingController _emailController;
   final TextEditingController _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
@@ -24,6 +27,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController(text: widget.initialEmail ?? '');
+  }
 
   @override
   void dispose() {
@@ -87,33 +96,59 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _signInWithGoogle() async {
     setState(() => _isLoading = true);
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn(
+      final GoogleSignIn googleSignIn = GoogleSignIn(
         serverClientId: '226294099341-d6n78vt0atgifcgmignq528bvfhq9t0u.apps.googleusercontent.com',
-      ).signIn();
+      );
+
+      // Force sign-out first to ensure account picker dialog pops up and clear stale tokens
+      try {
+        await googleSignIn.signOut();
+      } catch (_) {}
+
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
         return;
       }
+
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      
+      if (googleAuth.idToken == null) {
+        throw Exception(
+          "Google ID Token is missing. Please ensure your SHA-1 fingerprint is registered in Firebase Console.",
+        );
+      }
+
       final OAuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
-      UserCredential userCredential = await _auth.signInWithCredential(credential);
+
+      final UserCredential userCredential = await _auth.signInWithCredential(credential);
       final User? user = userCredential.user;
+
       if (user != null) {
-        final doc = await _firestore.collection('users').doc(user.uid).get();
+        // Save user_id to SharedPreferences for app services
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_id', user.uid);
+
+        final docRef = _firestore.collection('users').doc(user.uid);
+        final doc = await docRef.get();
+
         if (!doc.exists) {
-          await _firestore.collection('users').doc(user.uid).set({
+          await docRef.set({
             'displayname': user.displayName ?? 'New User',
-            'email': user.email,
+            'email': user.email ?? '',
             'avatar': user.photoURL ?? '',
             'cellnumber': '',
             'society': '',
             'dob': '',
             'profile_completed': false,
+            'wallet_balance': 0.0,
+            'createdAt': FieldValue.serverTimestamp(),
           });
         }
+
         if (mounted) {
           Navigator.pushReplacement(
             context,
@@ -122,8 +157,9 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (kDebugMode) print('Google Sign-In Error: $e');
       if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Google Sign-In failed: $e"), backgroundColor: Colors.red),
         );
@@ -327,7 +363,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
 
-                  /*
                   const SizedBox(height: 20),
                   const Text("OR", style: TextStyle(color: Colors.grey)),
                   const SizedBox(height: 20),
@@ -348,7 +383,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  */
 
                   const SizedBox(height: 24),
 
@@ -384,7 +418,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Footer
                   const Text(
-                    "Developed by Jaspa\n© 2025 Tingungu",
+                    "Developed by Jaspa\n© 2026 Tingungu",
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),

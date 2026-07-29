@@ -16,7 +16,7 @@ class _GivingPageState extends State<GivingPage> {
   String? selectedGivingType;
   final TextEditingController amountController = TextEditingController();
   final TextEditingController noteController = TextEditingController();
-  bool _isProcessing = false;
+  final bool _isProcessing = false;
 
   final user = FirebaseAuth.instance.currentUser;
 
@@ -106,7 +106,7 @@ class _GivingPageState extends State<GivingPage> {
                 if (options.isEmpty) return const Text("No giving options available. Please seed data.");
 
                 return DropdownButtonFormField<String>(
-                  value: selectedGivingType,
+                  initialValue: selectedGivingType,
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: Colors.white,

@@ -8,9 +8,7 @@ import 'notices_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
-import 'dart:convert';
 import '../utils/avatar_utils.dart';
-import '../data/event_model.dart';
 
 import '../data/scripture_model.dart';
 
@@ -34,15 +32,24 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  int? _slidingHoverIndex;
   Scripture? dailyScripture;
-  bool _isLoadingScripture = true;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   String userName = 'Guest';
   String userEmail = '';
   String userPhone = '';
   String userAvatar = '';
-  String timeGreeting = 'Good Morning';
+  String get timeGreeting {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return 'Good Morning';
+    } else if (hour < 17) {
+      return 'Good Afternoon';
+    } else {
+      return 'Good Evening';
+    }
+  }
   StreamSubscription<DocumentSnapshot>? _userSubscription;
 
   bool _isLoadingProfile = true;
@@ -98,15 +105,11 @@ class _HomeScreenState extends State<HomeScreen> {
       final scripture = await ScriptureService.getRandomScripture();
       setState(() {
         dailyScripture = scripture;
-        _isLoadingScripture = false;
       });
     } catch (e) {
       if (kDebugMode) {
         print('Error loading scripture: $e');
       }
-      setState(() {
-        _isLoadingScripture = false;
-      });
     }
   }
 
@@ -124,7 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
             .snapshots()
             .listen((snapshot) {
           if (snapshot.exists && mounted) {
-            final userData = snapshot.data() as Map<String, dynamic>? ?? {};
+            final userData = snapshot.data() ?? {};
             setState(() {
               userName = userData['displayname'] ?? 'Guest';
               userAvatar = userData['avatar'] ?? '';
@@ -203,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         margin: const EdgeInsets.only(bottom: 20),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFB8B24).withOpacity(0.1),
+                          color: const Color(0xFFFB8B24).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: const Color(0xFFFB8B24)),
                         ),
@@ -264,7 +267,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -291,7 +294,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -344,23 +347,58 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildGreeting() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '$timeGreeting, $userName! 👋',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF3B0D11),
+    final hour = DateTime.now().hour;
+    final timeIcon = hour < 12
+        ? Icons.wb_sunny_rounded
+        : (hour < 17 ? Icons.wb_cloudy_rounded : Icons.nights_stay_rounded);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          'Welcome to your spiritual journey',
-          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-        ),
-      ],
+        ],
+        border: Border.all(color: Colors.grey.shade200, width: 0.8),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFB8B24).withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(timeIcon, color: const Color(0xFFFB8B24), size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$timeGreeting, $userName! 👋',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF3B0D11),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Welcome to your spiritual journey',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -369,52 +407,112 @@ class _HomeScreenState extends State<HomeScreen> {
       return Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: const Color(0xFFFB8B24).withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 2))],
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFB8B24).withValues(alpha: 0.12),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: const Center(
-          child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFB8B24))),
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFB8B24)),
+          ),
         ),
       );
     }
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: const Color(0xFFFB8B24).withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 2))],
+        color: const Color(0xFFFFFDF9),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFFB8B24).withValues(alpha: 0.3),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFB8B24).withValues(alpha: 0.1),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: [
-              Container(width: 3, height: 16, decoration: BoxDecoration(color: const Color(0xFFFB8B24), borderRadius: BorderRadius.circular(2))),
-              const SizedBox(width: 8),
-              const Text('Daily Scripture', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFFB8B24))),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            dailyScripture!.text,
-            style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: Color(0xFF3B0D11), height: 1.3, fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 8),
-          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Text(
-                  dailyScripture!.reference,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFFB8B24)),
-                  overflow: TextOverflow.ellipsis,
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFB8B24).withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.format_quote_rounded,
+                      color: Color(0xFFFB8B24),
+                      size: 16,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'DAILY SCRIPTURE',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFFB8B24),
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                dailyScripture!.translation,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[500],
                 ),
               ),
-              const SizedBox(width: 8),
-              Text(dailyScripture!.translation, style: TextStyle(fontSize: 10, color: Colors.grey[500])),
             ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '"${dailyScripture!.text}"',
+            style: const TextStyle(
+              fontSize: 14,
+              fontStyle: FontStyle.italic,
+              color: Color(0xFF3B0D11),
+              height: 1.4,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF3B0D11).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                dailyScripture!.reference,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF3B0D11),
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -433,10 +531,10 @@ class _HomeScreenState extends State<HomeScreen> {
             color: Color(0xFF3B0D11),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         _buildMarketplaceTile(
           icon: Icons.phone_android_outlined,
-          title: 'BUY',
+          title: 'BUY AIRTIME & UTILITIES',
           subtitle: 'Buy data, airtime, electricity and digital subscriptions',
           color: const Color(0xFFFB8B24),
           onTap: () => _showVASBottomSheet(),
@@ -458,26 +556,38 @@ class _HomeScreenState extends State<HomeScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
+          border: Border.all(color: Colors.grey.shade200, width: 0.8),
         ),
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
             Container(
-              width: 56,
-              height: 56,
+              width: 54,
+              height: 54,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  colors: [color, color.withValues(alpha: 0.8)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
-              child: Icon(icon, color: color, size: 28),
+              child: Icon(icon, color: Colors.white, size: 26),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -487,7 +597,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     title,
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF3B0D11),
                     ),
@@ -496,7 +606,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     subtitle,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       color: Colors.grey[600],
                       height: 1.3,
                     ),
@@ -504,12 +614,25 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFAF9F6),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.chevron_right_rounded,
+                size: 22,
+                color: Color(0xFF3B0D11),
+              ),
+            ),
           ],
         ),
       ),
     );
-  }  Widget _buildDrawer() {
+  }
+  Widget _buildDrawer() {
     final topPadding = MediaQuery.of(context).padding.top;
     return Drawer(
       backgroundColor: const Color(0xFFFAF9F6),
@@ -523,7 +646,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: const Color(0xFF3B0D11),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
+                  color: Colors.black.withValues(alpha: 0.2),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),
@@ -535,7 +658,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   width: 54,
                   height: 54,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: CircleAvatar(
@@ -826,7 +949,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         selected: isActive,
-        selectedTileColor: const Color(0xFFFB8B24).withOpacity(0.1),
+        selectedTileColor: const Color(0xFFFB8B24).withValues(alpha: 0.1),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         onTap: onTap,
       ),
@@ -836,166 +959,305 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildWalletCard() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF3B0D11),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(18),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF3B0D11), Color(0xFF5A151C)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF3B0D11).withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: const Color(0xFF3B0D11).withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Tingungu Wallet',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white.withOpacity(0.9),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.account_balance_wallet_outlined,
+                      color: Color(0xFFFB8B24),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Tingungu Wallet',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withValues(alpha: 0.9),
+                    ),
+                  ),
+                ],
+              ),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const TopUpWalletScreen(),
+                    ),
+                  );
+                  if (result == true) {
+                    _loadWalletBalance();
+                  }
+                },
+                icon: const Icon(Icons.add_circle_outline, size: 16),
+                label: const Text(
+                  'TOP UP',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFB8B24),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  elevation: 2,
                 ),
               ),
-              const SizedBox(height: 4),
-              _isLoadingWallet
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : Text(
-                      'R ${walletBalance.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
             ],
           ),
-          ElevatedButton(
-            onPressed: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const TopUpWalletScreen(),
+          const SizedBox(height: 16),
+          _isLoadingWallet
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                )
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      'R ${walletBalance.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Available Balance',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.white.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
                 ),
-              );
-              if (result == true) {
-                _loadWalletBalance();
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: const Color(0xFF3B0D11),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              elevation: 0,
-            ),
-            child: const Text(
-              'TOP UP',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
+  void _onNavTabSelect(int index) {
+    if (index == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const CommunityScreen(),
+        ),
+      );
+    } else if (index == 2) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const MediaScreen(),
+        ),
+      );
+    } else if (index == 3) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const EventsScreen(),
+        ),
+      );
+    } else {
+      setState(() => _currentIndex = index);
+    }
+  }
+
   Widget _buildBottomNav() {
+    final navItems = [
+      {
+        'label': 'Home',
+        'icon': Icons.home_outlined,
+        'activeIcon': Icons.home_rounded,
+      },
+      {
+        'label': 'Community',
+        'icon': Icons.groups_outlined,
+        'activeIcon': Icons.groups_rounded,
+      },
+      {
+        'label': 'Media',
+        'icon': Icons.play_circle_outline_rounded,
+        'activeIcon': Icons.play_circle_fill_rounded,
+      },
+      {
+        'label': 'Events',
+        'icon': Icons.calendar_month_outlined,
+        'activeIcon': Icons.calendar_month_rounded,
+      },
+    ];
+
+    final activeIndex = _slidingHoverIndex ?? _currentIndex;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
       child: SafeArea(
         top: false,
-        child: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          if (index == 1) {
-            // Community page
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const CommunityScreen(),
-              ),
-            );
-          } else if (index == 2) {
-            // Media page
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const MediaScreen(),
-              ),
-            );
-          } else if (index == 3) {
-            // Events page
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const EventsScreen(),
-              ),
-            );
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final widthPerTab = constraints.maxWidth / navItems.length;
 
-          } else {
-            // Home page
-            setState(() => _currentIndex = index);
-          }
-        },
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        selectedItemColor: const Color(0xFFFB8B24),
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people_outline),
-            activeIcon: Icon(Icons.people),
-            label: 'Community',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.video_library_outlined),
-            activeIcon: Icon(Icons.video_library),
-            label: 'Media',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.event_outlined),
-            activeIcon: Icon(Icons.event),
-            label: 'Events',
-          ),
-        ],
+            void updateSlidingHover(Offset globalPosition) {
+              final RenderBox? box = context.findRenderObject() as RenderBox?;
+              if (box != null) {
+                final localPos = box.globalToLocal(globalPosition);
+                final calculatedIndex =
+                    (localPos.dx / widthPerTab).floor().clamp(0, navItems.length - 1);
+                if (_slidingHoverIndex != calculatedIndex) {
+                  setState(() {
+                    _slidingHoverIndex = calculatedIndex;
+                  });
+                }
+              }
+            }
+
+            void commitTabSelection() {
+              if (_slidingHoverIndex != null) {
+                final targetIndex = _slidingHoverIndex!;
+                setState(() {
+                  _slidingHoverIndex = null;
+                });
+                _onNavTabSelect(targetIndex);
+              }
+            }
+
+            return GestureDetector(
+              onPanStart: (details) => updateSlidingHover(details.globalPosition),
+              onPanUpdate: (details) => updateSlidingHover(details.globalPosition),
+              onPanEnd: (_) => commitTabSelection(),
+              onPanCancel: () {
+                setState(() {
+                  _slidingHoverIndex = null;
+                });
+              },
+              behavior: HitTestBehavior.translucent,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: List.generate(navItems.length, (index) {
+                    final item = navItems[index];
+                    final isSelected = activeIndex == index;
+                    final isHovered = _slidingHoverIndex == index;
+
+                    return GestureDetector(
+                      onTap: () => _onNavTabSelect(index),
+                      behavior: HitTestBehavior.opaque,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isSelected ? 16 : 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? const Color(0xFFFB8B24)
+                                  .withValues(alpha: isHovered ? 0.25 : 0.15)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: isHovered
+                              ? [
+                                  BoxShadow(
+                                    color: const Color(0xFFFB8B24).withValues(alpha: 0.2),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            AnimatedScale(
+                              scale: isSelected ? (isHovered ? 1.25 : 1.15) : 1.0,
+                              duration: const Duration(milliseconds: 180),
+                              child: Icon(
+                                isSelected
+                                    ? (item['activeIcon'] as IconData)
+                                    : (item['icon'] as IconData),
+                                color: isSelected
+                                    ? const Color(0xFFFB8B24)
+                                    : const Color(0xFF3B0D11).withValues(alpha: 0.5),
+                                size: 24,
+                              ),
+                            ),
+                            if (isSelected) ...[
+                              const SizedBox(width: 8),
+                              AnimatedDefaultTextStyle(
+                                duration: const Duration(milliseconds: 180),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: isHovered
+                                      ? const Color(0xFFFB8B24)
+                                      : const Color(0xFF3B0D11),
+                                ),
+                                child: Text(item['label'] as String),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            );
+          },
+        ),
       ),
-    ),
-  );
+    );
   }
-
-
-
 
 
   Future<void> _seedMediaData() async {
@@ -1333,12 +1595,12 @@ class _HomeScreenState extends State<HomeScreen> {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -1347,7 +1609,7 @@ class _HomeScreenState extends State<HomeScreen> {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: color, size: 28),

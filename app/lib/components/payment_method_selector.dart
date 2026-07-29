@@ -199,7 +199,7 @@ class _PaymentMethodSelectorState extends State<PaymentMethodSelector> {
           border: Border.all(color: Colors.grey.shade200),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
+              color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 5,
               offset: const Offset(0, 2),
             )
@@ -210,7 +210,7 @@ class _PaymentMethodSelectorState extends State<PaymentMethodSelector> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF3B0D11).withOpacity(0.05),
+                color: const Color(0xFF3B0D11).withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(icon, color: const Color(0xFF3B0D11)),

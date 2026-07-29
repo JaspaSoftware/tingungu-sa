@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 import 'terms_screen.dart';
@@ -19,12 +21,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final FocusNode _emailFocusNode = FocusNode();
 
   bool _agreedToTerms = false;
   bool _isLoading = false;
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _emailFocusNode.dispose();
+    super.dispose();
+  }
 
   Future<void> _registerUser() async {
     if (_formKey.currentState!.validate()) {
@@ -74,11 +85,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
       } on FirebaseAuthException catch (e) {
         setState(() => _isLoading = false);
 
-        String message = "Something went wrong";
         if (e.code == 'email-already-in-use') {
-          message = "This email is already registered.";
-        } else if (e.code == 'invalid-email') {
+          final email = _emailController.text.trim();
+          if (mounted) {
+            _showEmailAlreadyExistsDialog(email);
+          }
+          return;
+        }
+
+        String message = "Something went wrong";
+        if (e.code == 'invalid-email') {
           message = "Please enter a valid email address.";
+        } else if (e.code == 'weak-password') {
+          message = "The password provided is too weak.";
+        } else if (e.message != null) {
+          message = e.message!;
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -88,37 +109,141 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  void _showEmailAlreadyExistsDialog(String email) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFB8B24).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.mark_email_read_outlined, color: Color(0xFFFB8B24), size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                "Account Exists",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF3B0D11),
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "The email $email is already registered with Tingungu.",
+              style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.4),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Would you like to sign in to access your existing account?",
+              style: TextStyle(fontSize: 13, color: Colors.grey, height: 1.4),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _emailFocusNode.requestFocus();
+              if (_emailController.text.isNotEmpty) {
+                _emailController.selection = TextSelection(
+                  baseOffset: 0,
+                  extentOffset: _emailController.text.length,
+                );
+              }
+            },
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => LoginScreen(initialEmail: email),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3B0D11),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text("Sign In Now"),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   Future<void> _signInWithGoogle() async {
     setState(() => _isLoading = true);
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn(
+      final GoogleSignIn googleSignIn = GoogleSignIn(
         serverClientId: '226294099341-d6n78vt0atgifcgmignq528bvfhq9t0u.apps.googleusercontent.com',
-      ).signIn();
+      );
+
+      try {
+        await googleSignIn.signOut();
+      } catch (_) {}
+
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
         return;
       }
+
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      if (googleAuth.idToken == null) {
+        throw Exception(
+          "Google ID Token is missing. Please ensure your SHA-1 fingerprint is registered in Firebase Console.",
+        );
+      }
+
       final OAuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
-      UserCredential userCredential = await _auth.signInWithCredential(credential);
+
+      final UserCredential userCredential = await _auth.signInWithCredential(credential);
       final User? user = userCredential.user;
+
       if (user != null) {
-        final doc = await _firestore.collection('users').doc(user.uid).get();
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_id', user.uid);
+
+        final docRef = _firestore.collection('users').doc(user.uid);
+        final doc = await docRef.get();
+
         if (!doc.exists) {
-          await _firestore.collection('users').doc(user.uid).set({
+          await docRef.set({
             'displayname': user.displayName ?? 'New User',
-            'email': user.email,
+            'email': user.email ?? '',
             'avatar': user.photoURL ?? '',
             'cellnumber': '',
             'society': '',
             'dob': '',
             'profile_completed': false,
+            'wallet_balance': 0.0,
+            'createdAt': FieldValue.serverTimestamp(),
           });
         }
+
         if (mounted) {
           Navigator.pushReplacement(
             context,
@@ -127,10 +252,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
       }
     } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Google Sign-In failed: $e"), backgroundColor: Colors.red),
-      );
+      if (kDebugMode) print('Google Sign-In Error: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Google Sign-In failed: $e"), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -183,6 +311,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         /// Email
                         TextFormField(
                           controller: _emailController,
+                          focusNode: _emailFocusNode,
                           keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
                             labelText: "Email Address",
@@ -254,7 +383,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: const Text("Continue with Email", style: TextStyle(fontSize: 16)),
                     ),
                   ),
-                  /*
                   const SizedBox(height: 15),
                   const Text("OR", style: TextStyle(color: Colors.grey)),
                   const SizedBox(height: 15),
@@ -273,7 +401,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                   ),
-                  */
 
                   const SizedBox(height: 15),
 
@@ -309,7 +436,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   /// ✅ FOOTER
                   const Text(
-                    "Developed by Jaspa\n© 2025",
+                    "Developed by Jaspa\n© 2026",
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),

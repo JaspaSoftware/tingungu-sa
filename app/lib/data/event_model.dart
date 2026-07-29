@@ -5,6 +5,8 @@ class Event {
   final String? dateEnd;
   final String description;
   final String? venue;
+  final String? district;
+  final String? society;
 
   Event({
     required this.id,
@@ -13,6 +15,8 @@ class Event {
     this.dateEnd,
     required this.description,
     this.venue,
+    this.district,
+    this.society,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -23,6 +27,8 @@ class Event {
       dateEnd: json['date_end'],
       description: json['description'] ?? '',
       venue: json['venue'],
+      district: json['district'],
+      society: json['society'],
     );
   }
 
@@ -34,6 +40,8 @@ class Event {
       dateEnd: map['date_end'],
       description: map['description'] ?? '',
       venue: map['venue'],
+      district: map['district'],
+      society: map['society'],
     );
   }
 }

@@ -254,8 +254,7 @@ const persons = [
   { id: '34', surname: 'MADUMO', first_name: 'PETRUS', cellphone: '0723986960', email: 'madumop@yahoo.co' },
   { id: '35', surname: 'DITHUGE', first_name: 'THOKWANE', cellphone: '0722619446', email: 'dithuge@gmail.com' },
   { id: '36', surname: 'MONAGENG', first_name: 'LETHULE', cellphone: '0732628951', email: 'revmonageng@gmail.com' },
-  { id: '37', surname: 'SIFO', first_name: 'LUVUYO', cellphone: '0823311605', email: 'sifol@smms.ac.za' },
-  { id: '38', surname: 'DIETSISO', first_name: 'MOKGETHI', cellphone: '0835116250', email: 'mokgethidietsiso@telkom.net' }
+  { id: '37', surname: 'DIETSISO', first_name: 'MOKGETHI', cellphone: '0835116250', email: 'mokgethidietsiso@telkom.net' }
 ];
 
 const appointments = [
@@ -294,8 +293,7 @@ const appointments = [
   { person_id: '34', society_id: '63', category_id: '2' },
   { person_id: '35', society_id: '64', category_id: '2' },
   { person_id: '36', society_id: '65', category_id: '2' },
-  { person_id: '37', society_id: '66', category_id: '2' },
-  { person_id: '38', society_id: '68', category_id: '2' }
+  { person_id: '37', society_id: '68', category_id: '2' }
 ];
 
 async function seed() {

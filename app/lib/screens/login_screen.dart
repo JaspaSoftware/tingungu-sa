@@ -1,10 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
 
@@ -26,7 +22,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {
@@ -89,80 +84,6 @@ class _LoginScreenState extends State<LoginScreen> {
             SnackBar(content: Text("An error occurred: $e"), backgroundColor: Colors.red),
           );
         }
-      }
-    }
-  }
-
-  Future<void> _signInWithGoogle() async {
-    setState(() => _isLoading = true);
-    try {
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        serverClientId: '226294099341-d6n78vt0atgifcgmignq528bvfhq9t0u.apps.googleusercontent.com',
-      );
-
-      // Force sign-out first to ensure account picker dialog pops up and clear stale tokens
-      try {
-        await googleSignIn.signOut();
-      } catch (_) {}
-
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-      if (googleUser == null) {
-        if (mounted) setState(() => _isLoading = false);
-        return;
-      }
-
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      
-      if (googleAuth.idToken == null) {
-        throw Exception(
-          "Google ID Token is missing. Please ensure your SHA-1 fingerprint is registered in Firebase Console.",
-        );
-      }
-
-      final OAuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
-      final User? user = userCredential.user;
-
-      if (user != null) {
-        // Save user_id to SharedPreferences for app services
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user_id', user.uid);
-
-        final docRef = _firestore.collection('users').doc(user.uid);
-        final doc = await docRef.get();
-
-        if (!doc.exists) {
-          await docRef.set({
-            'displayname': user.displayName ?? 'New User',
-            'email': user.email ?? '',
-            'avatar': user.photoURL ?? '',
-            'cellnumber': '',
-            'society': '',
-            'dob': '',
-            'profile_completed': false,
-            'wallet_balance': 0.0,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-        }
-
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
-          );
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) print('Google Sign-In Error: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Google Sign-In failed: $e"), backgroundColor: Colors.red),
-        );
       }
     }
   }
@@ -360,27 +281,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       child: const Text("Sign In", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-                  const Text("OR", style: TextStyle(color: Colors.grey)),
-                  const SizedBox(height: 20),
-
-                  // Google Sign In Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _isLoading ? null : _signInWithGoogle,
-                      icon: const Icon(Icons.g_mobiledata, size: 28, color: Color(0xFFFB8B24)),
-                      label: const Text("Continue with Google", style: TextStyle(fontSize: 16, color: Color(0xFFFB8B24))),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        side: const BorderSide(color: Color(0xFFFB8B24)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
                     ),
                   ),
 

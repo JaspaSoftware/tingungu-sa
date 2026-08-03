@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "226294099341-7i4cjpgumshsb0iki93p2konrp16ho05.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "za.co.tingungu.mytingungu",
+            "certificate_hash": "e0dc3a619e3a782034c5dbb72bda67353d73e696"
+          }
+        },
+        {
           "client_id": "226294099341-on1u4vl9gmc01f4tf1h11dr7bvigr5b2.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

@@ -10,7 +10,17 @@ import 'payment_status_screen.dart';
 
 class PayFastWebView extends StatefulWidget {
   final Map<String, String> formData;
-  const PayFastWebView({super.key,required this.formData });
+  // When true (the default, used by the standalone wallet top-up flow), a
+  // successful payment credits wallet_balance and shows PaymentStatusScreen.
+  // When false (used via PaymentMethodSelector for Giving/Airtime/etc.),
+  // this instead pops back to the caller with true/false so it can complete
+  // its own success/failure handling.
+  final bool isWalletTopUp;
+  const PayFastWebView({
+    super.key,
+    required this.formData,
+    this.isWalletTopUp = true,
+  });
   static const id = 'payFastWebView';
 
   @override
@@ -63,10 +73,7 @@ class _PayFastWebViewState extends State<PayFastWebView> {
             _handleSuccessPayment();
             return NavigationDecision.prevent;
           } else if (request.url.contains('cancel')) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const PaymentStatusScreen(success: false)),
-            );
+            _handleCancelledPayment();
             return NavigationDecision.prevent;
           }
           return NavigationDecision.navigate;
@@ -80,35 +87,54 @@ class _PayFastWebViewState extends State<PayFastWebView> {
   Future<void> _handleSuccessPayment() async {
     setState(() => isLoading = true);
     try {
-      final amountStr = widget.formData['amount'];
-      final amount = double.tryParse(amountStr ?? '0') ?? 0.0;
+      if (widget.isWalletTopUp) {
+        final amountStr = widget.formData['amount'];
+        final amount = double.tryParse(amountStr ?? '0') ?? 0.0;
 
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final docRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
-        await FirebaseFirestore.instance.runTransaction((transaction) async {
-          final snapshot = await transaction.get(docRef);
-          if (!snapshot.exists) {
-            throw Exception("User does not exist!");
-          }
-          final double currentBalance = (snapshot.data()?['wallet_balance'] ?? 0.0).toDouble();
-          transaction.update(docRef, {'wallet_balance': currentBalance + amount});
-        });
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final docRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+          await FirebaseFirestore.instance.runTransaction((transaction) async {
+            final snapshot = await transaction.get(docRef);
+            if (!snapshot.exists) {
+              throw Exception("User does not exist!");
+            }
+            final double currentBalance = (snapshot.data()?['wallet_balance'] ?? 0.0).toDouble();
+            transaction.update(docRef, {'wallet_balance': currentBalance + amount});
+          });
+        }
       }
-      
-      if (mounted) {
+
+      if (!mounted) return;
+      if (widget.isWalletTopUp) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const PaymentStatusScreen(success: true)),
         );
+      } else {
+        Navigator.pop(context, true);
       }
     } catch (e) {
-      if (mounted) {
+      if (!mounted) return;
+      if (widget.isWalletTopUp) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const PaymentStatusScreen(success: false)),
         );
+      } else {
+        Navigator.pop(context, false);
       }
+    }
+  }
+
+  void _handleCancelledPayment() {
+    if (widget.isWalletTopUp) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const PaymentStatusScreen(success: false)),
+      );
+    } else {
+      Navigator.pop(context, false);
     }
   }
 

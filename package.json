@@ -6,8 +6,8 @@
   "author": "Jaspa",
   "license": "ISC",
   "scripts": {
-    "android": "cd app && flutter run -d adb-R92X51XE4NY-zyKKLj._adb-tls-connect._tcp",
-    "app:android": "cd app && flutter run -d adb-R92X51XE4NY-zyKKLj._adb-tls-connect._tcp",
+    "android": "cd app && flutter run",
+    "app:android": "cd app && flutter run",
     "app:build": "cd app && flutter build apk",
     "start:api": "npm --prefix api start",
     "seed:api": "npm --prefix api run seed",

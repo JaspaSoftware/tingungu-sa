@@ -14,13 +14,28 @@ class GivingPage extends StatefulWidget {
 
 class _GivingPageState extends State<GivingPage> {
   String? selectedGivingType;
+  String? selectedGivingTypeId;
   final TextEditingController amountController = TextEditingController();
   final TextEditingController noteController = TextEditingController();
-  final bool _isProcessing = false;
+  bool _isProcessing = false;
 
   final user = FirebaseAuth.instance.currentUser;
 
+  @override
+  void dispose() {
+    amountController.dispose();
+    noteController.dispose();
+    super.dispose();
+  }
+
   void _processGiving() {
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to give'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
     if (selectedGivingType == null || amountController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select type and enter amount'), backgroundColor: Colors.red),
@@ -35,6 +50,8 @@ class _GivingPageState extends State<GivingPage> {
       );
       return;
     }
+
+    setState(() => _isProcessing = true);
 
     showModalBottomSheet(
       context: context,
@@ -66,15 +83,23 @@ class _GivingPageState extends State<GivingPage> {
             'method': method,
           });
 
+          if (mounted) setState(() => _isProcessing = false);
+          if (!context.mounted) return;
           Navigator.pop(context);
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => ThankYouScreen(amount: amount)),
+            MaterialPageRoute(builder: (context) => ThankYouScreen(amount: amount, paymentMethod: method)),
           );
         },
-        onPaymentFailed: () => Navigator.pop(context),
+        onPaymentFailed: () {
+          if (mounted) setState(() => _isProcessing = false);
+          Navigator.pop(context);
+        },
       ),
-    );
+    ).then((_) {
+      // Sheet dismissed without a payment method completing (e.g. swiped away).
+      if (mounted) setState(() => _isProcessing = false);
+    });
   }
 
   @override
@@ -105,8 +130,18 @@ class _GivingPageState extends State<GivingPage> {
                 final options = snapshot.data!.docs;
                 if (options.isEmpty) return const Text("No giving options available. Please seed data.");
 
+                // Use the document ID as the dropdown value rather than the
+                // display name: duplicate "name" values (e.g. from seeding
+                // the giving options more than once) would otherwise violate
+                // DropdownButtonFormField's requirement that item values be
+                // unique and crash the whole screen.
+                final validIds = options.map((doc) => doc.id).toSet();
+                final dropdownValue = validIds.contains(selectedGivingTypeId)
+                    ? selectedGivingTypeId
+                    : null;
+
                 return DropdownButtonFormField<String>(
-                  initialValue: selectedGivingType,
+                  initialValue: dropdownValue,
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: Colors.white,
@@ -114,10 +149,18 @@ class _GivingPageState extends State<GivingPage> {
                     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
                   ),
                   items: options.map((doc) {
-                    final name = doc.get('name') as String;
-                    return DropdownMenuItem(value: name, child: Text(name));
+                    final data = doc.data() as Map<String, dynamic>;
+                    final name = data['name'] as String? ?? 'Untitled';
+                    return DropdownMenuItem(value: doc.id, child: Text(name));
                   }).toList(),
-                  onChanged: (val) => setState(() => selectedGivingType = val),
+                  onChanged: (val) {
+                    final doc = options.firstWhere((d) => d.id == val);
+                    final data = doc.data() as Map<String, dynamic>;
+                    setState(() {
+                      selectedGivingTypeId = val;
+                      selectedGivingType = data['name'] as String? ?? 'Untitled';
+                    });
+                  },
                   hint: const Text("Choose what to give for"),
                 );
               },

@@ -10,6 +10,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import '../utils/avatar_utils.dart';
+import '../utils/notice_utils.dart';
 
 import '../data/scripture_model.dart';
 
@@ -26,6 +27,7 @@ import 'top_up_wallet.dart';
 import 'transactions_screen.dart';
 import 'login_screen.dart';
 import '../services/user_service.dart';
+import '../services/presence_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -34,7 +36,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
   int? _slidingHoverIndex;
   Scripture? dailyScripture;
@@ -72,6 +74,24 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadUserProfile();
     _loadDailyScripture();
     _loadWalletBalance();
+    WidgetsBinding.instance.addObserver(this);
+    PresenceService.goOnlineForNewSession();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        PresenceService.markAppForeground();
+        break;
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        PresenceService.markAppBackground();
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+        break;
+    }
   }
 
   Future<void> _loadWalletBalance() async {
@@ -162,6 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tilesPageController.dispose();
     _userSubscription?.cancel();
     super.dispose();
@@ -353,6 +374,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       final Set<String> readIds = readNotices
                           .map((e) => e.toString())
                           .toSet();
+                      final userSociety =
+                          (userData['society'] ?? userData['society_name'])
+                              ?.toString();
 
                       return StreamBuilder<QuerySnapshot>(
                         stream: FirebaseFirestore.instance
@@ -362,7 +386,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           int unreadCount = 0;
                           if (noticesSnap.hasData) {
                             for (var doc in noticesSnap.data!.docs) {
-                              if (!readIds.contains(doc.id)) {
+                              final isVisible = isNoticeVisibleToSociety(
+                                doc.data() as Map<String, dynamic>,
+                                userSociety,
+                              );
+                              if (isVisible && !readIds.contains(doc.id)) {
                                 unreadCount++;
                               }
                             }
@@ -1147,6 +1175,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: () async {
+                            await PresenceService.goOffline();
                             await UserService.signOutUser();
                             await FirebaseAuth.instance.signOut();
                             final prefs = await SharedPreferences.getInstance();
@@ -2193,17 +2222,39 @@ class _HomeScreenState extends State<HomeScreen> {
         "leader": "Rev. Jacobs",
       },
     ];
+
+    final existingSnapshot = await FirebaseFirestore.instance
+        .collection('societies')
+        .get();
+    final existingNames = existingSnapshot.docs
+        .map(
+          (doc) => (doc.data()['name'] as String? ?? '').trim().toLowerCase(),
+        )
+        .toSet();
+
     final batch = FirebaseFirestore.instance.batch();
+    var addedCount = 0;
     for (var s in societies) {
+      final name = (s['name'] as String).trim().toLowerCase();
+      if (existingNames.contains(name)) continue;
       final docRef = FirebaseFirestore.instance.collection('societies').doc();
       batch.set(docRef, {...s, "createdAt": FieldValue.serverTimestamp()});
+      addedCount++;
     }
-    await batch.commit();
+    if (addedCount > 0) {
+      await batch.commit();
+    }
     if (mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Seeded 5 societies!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            addedCount > 0
+                ? 'Seeded $addedCount new societies!'
+                : 'Societies already seeded.',
+          ),
+        ),
+      );
     }
   }
 }

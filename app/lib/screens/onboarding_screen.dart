@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
@@ -63,220 +61,156 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF3B0D11),
-      body: Stack(
-        children: [
-          const Positioned.fill(child: _AmbientBackground()),
-          SafeArea(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 4, 20, 0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      AnimatedOpacity(
-                        opacity: _isLastPage ? 0 : 1,
-                        duration: const Duration(milliseconds: 250),
-                        child: TextButton(
-                          onPressed: _isLastPage ? null : _finishOnboarding,
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.white.withValues(
-                              alpha: 0.7,
-                            ),
-                          ),
-                          child: const Text(
-                            'SKIP',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
+      backgroundColor: const Color(0xFFFAF9F6),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 4, 20, 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  AnimatedOpacity(
+                    opacity: _isLastPage ? 0 : 1,
+                    duration: const Duration(milliseconds: 250),
+                    child: TextButton(
+                      onPressed: _isLastPage ? null : _finishOnboarding,
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.grey[600],
+                      ),
+                      child: const Text(
+                        'SKIP',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1.2,
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: PageView.builder(
-                    controller: _controller,
-                    itemCount: _pages.length,
-                    onPageChanged: (index) {
-                      setState(() => _isLastPage = index == _pages.length - 1);
-                    },
-                    itemBuilder: (context, index) {
-                      return AnimatedBuilder(
-                        animation: _controller,
-                        builder: (context, child) {
-                          double page = index.toDouble();
-                          if (_controller.hasClients) {
-                            page =
-                                _controller.page ??
-                                _controller.initialPage.toDouble();
-                          }
-                          final distance = (page - index).abs().clamp(0.0, 1.0);
-                          final scale = 1 - (distance * 0.1);
-                          final opacity = 1 - (distance * 0.55);
-                          return Opacity(
-                            opacity: opacity.clamp(0.0, 1.0),
-                            child: Transform.scale(scale: scale, child: child),
-                          );
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: _OnboardPage(
-                            key: ValueKey(index),
-                            data: _pages[index],
-                            stepNumber: index + 1,
-                            totalSteps: _pages.length,
-                          ),
-                        ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: PageView.builder(
+                controller: _controller,
+                itemCount: _pages.length,
+                onPageChanged: (index) {
+                  setState(() => _isLastPage = index == _pages.length - 1);
+                },
+                itemBuilder: (context, index) {
+                  return AnimatedBuilder(
+                    animation: _controller,
+                    builder: (context, child) {
+                      double page = index.toDouble();
+                      if (_controller.hasClients) {
+                        page =
+                            _controller.page ??
+                            _controller.initialPage.toDouble();
+                      }
+                      final distance = (page - index).abs().clamp(0.0, 1.0);
+                      final scale = 1 - (distance * 0.1);
+                      final opacity = 1 - (distance * 0.55);
+                      return Opacity(
+                        opacity: opacity.clamp(0.0, 1.0),
+                        child: Transform.scale(scale: scale, child: child),
                       );
                     },
-                  ),
-                ),
-                SmoothPageIndicator(
-                  controller: _controller,
-                  count: _pages.length,
-                  effect: const ExpandingDotsEffect(
-                    dotHeight: 8,
-                    dotWidth: 8,
-                    expansionFactor: 3.5,
-                    spacing: 6,
-                    activeDotColor: Color(0xFFFB8B24),
-                    dotColor: Colors.white24,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: _isLastPage
-                        ? _PulsingButton(
-                            child: ElevatedButton(
-                              onPressed: _finishOnboarding,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFFB8B24),
-                                foregroundColor: Colors.white,
-                                minimumSize: const Size.fromHeight(54),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                elevation: 8,
-                                shadowColor: const Color(
-                                  0xFFFB8B24,
-                                ).withValues(alpha: 0.5),
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    'GET STARTED',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 1,
-                                    ),
-                                  ),
-                                  SizedBox(width: 8),
-                                  Icon(Icons.arrow_forward_rounded, size: 20),
-                                ],
-                              ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: _OnboardPage(
+                        key: ValueKey(index),
+                        data: _pages[index],
+                        stepNumber: index + 1,
+                        totalSteps: _pages.length,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            SmoothPageIndicator(
+              controller: _controller,
+              count: _pages.length,
+              effect: const ExpandingDotsEffect(
+                dotHeight: 8,
+                dotWidth: 8,
+                expansionFactor: 3.5,
+                spacing: 6,
+                activeDotColor: Color(0xFFFB8B24),
+                dotColor: Color(0xFFE0DAD3),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: SizedBox(
+                width: double.infinity,
+                child: _isLastPage
+                    ? _PulsingButton(
+                        child: ElevatedButton(
+                          onPressed: _finishOnboarding,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFB8B24),
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size.fromHeight(54),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                          )
-                        : OutlinedButton(
-                            onPressed: () {
-                              _controller.nextPage(
-                                duration: const Duration(milliseconds: 500),
-                                curve: Curves.easeOutCubic,
-                              );
-                            },
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size.fromHeight(54),
-                              side: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.3),
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'NEXT',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                                SizedBox(width: 8),
-                                Icon(Icons.arrow_forward_rounded, size: 20),
-                              ],
-                            ),
+                            elevation: 4,
+                            shadowColor: const Color(
+                              0xFFFB8B24,
+                            ).withValues(alpha: 0.4),
                           ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'GET STARTED',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Icon(Icons.arrow_forward_rounded, size: 20),
+                            ],
+                          ),
+                        ),
+                      )
+                    : OutlinedButton(
+                        onPressed: () {
+                          _controller.nextPage(
+                            duration: const Duration(milliseconds: 500),
+                            curve: Curves.easeOutCubic,
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFFFB8B24),
+                          minimumSize: const Size.fromHeight(54),
+                          side: const BorderSide(color: Color(0xFFFB8B24)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'NEXT',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Icon(Icons.arrow_forward_rounded, size: 20),
+                          ],
+                        ),
+                      ),
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Soft, static radial glows over a subtle vertical gradient. Cheap to
-/// render (no blur filters) since the glow itself is baked into the
-/// gradient stops rather than post-processed.
-class _AmbientBackground extends StatelessWidget {
-  const _AmbientBackground();
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xFF2A0A0D), Color(0xFF3B0D11), Color(0xFF4A1116)],
-            ),
-          ),
-        ),
-        Positioned(
-          top: -90,
-          right: -70,
-          child: _GlowOrb(size: 260, color: const Color(0xFFFB8B24)),
-        ),
-        Positioned(
-          bottom: -110,
-          left: -90,
-          child: _GlowOrb(size: 240, color: const Color(0xFFFB8B24)),
-        ),
-      ],
-    );
-  }
-}
-
-class _GlowOrb extends StatelessWidget {
-  final double size;
-  final Color color;
-
-  const _GlowOrb({required this.size, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [color.withValues(alpha: 0.16), color.withValues(alpha: 0.0)],
+            const SizedBox(height: 24),
+          ],
         ),
       ),
     );
@@ -362,7 +296,7 @@ class _OnboardPageState extends State<_OnboardPage>
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        const Color(0xFFFB8B24).withValues(alpha: 0.22),
+                        const Color(0xFFFB8B24).withValues(alpha: 0.16),
                         const Color(0xFFFB8B24).withValues(alpha: 0.0),
                       ],
                     ),
@@ -394,73 +328,67 @@ class _OnboardPageState extends State<_OnboardPage>
               begin: const Offset(0, 0.06),
               end: Offset.zero,
             ).animate(cardAnim),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 28,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.grey.shade200),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
                   ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.12),
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        children: List.generate(words.length, (i) {
-                          final start = (0.3 + i * 0.12).clamp(0.0, 1.0);
-                          final end = (start + 0.45).clamp(0.0, 1.0);
-                          final anim = _interval(start, end);
-                          return AnimatedBuilder(
-                            animation: anim,
-                            builder: (context, child) => Opacity(
-                              opacity: anim.value,
-                              child: Transform.translate(
-                                offset: Offset(0, (1 - anim.value) * 14),
-                                child: child,
-                              ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                              ),
-                              child: Text(
-                                words[i],
-                                style: const TextStyle(
-                                  fontSize: 25,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  letterSpacing: -0.3,
-                                ),
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-                      const SizedBox(height: 14),
-                      FadeTransition(
-                        opacity: descriptionAnim,
-                        child: Text(
-                          widget.data.description,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 15,
-                            height: 1.5,
-                            color: Colors.white.withValues(alpha: 0.75),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    children: List.generate(words.length, (i) {
+                      final start = (0.3 + i * 0.12).clamp(0.0, 1.0);
+                      final end = (start + 0.45).clamp(0.0, 1.0);
+                      final anim = _interval(start, end);
+                      return AnimatedBuilder(
+                        animation: anim,
+                        builder: (context, child) => Opacity(
+                          opacity: anim.value,
+                          child: Transform.translate(
+                            offset: Offset(0, (1 - anim.value) * 14),
+                            child: child,
                           ),
                         ),
-                      ),
-                    ],
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Text(
+                            words[i],
+                            style: const TextStyle(
+                              fontSize: 25,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF3B0D11),
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
                   ),
-                ),
+                  const SizedBox(height: 14),
+                  FadeTransition(
+                    opacity: descriptionAnim,
+                    child: Text(
+                      widget.data.description,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 15,
+                        height: 1.5,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 import 'terms_screen.dart';
@@ -38,7 +41,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (_formKey.currentState!.validate()) {
       if (!_agreedToTerms) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please agree to the terms to continue")),
+          const SnackBar(
+            content: Text("Please agree to the terms to continue"),
+          ),
         );
         return;
       }
@@ -48,16 +53,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
 
       try {
-
-        UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: "tempPassword",
-        );
+        UserCredential userCredential = await _auth
+            .createUserWithEmailAndPassword(
+              email: _emailController.text.trim(),
+              password: "tempPassword",
+            );
 
         final uid = userCredential.user?.uid;
 
         await _firestore.collection('users').doc(uid).set({
-          'displayname': _nameController.text.trim().isEmpty ? 'New User' : _nameController.text.trim(),
+          'displayname': _nameController.text.trim().isEmpty
+              ? 'New User'
+              : _nameController.text.trim(),
           'email': _emailController.text.trim(),
           'cellnumber': '',
           'avatar': '',
@@ -65,7 +72,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'dob': '',
           'profile_completed': false,
         });
-
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -120,7 +126,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 color: const Color(0xFFFB8B24).withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.mark_email_read_outlined, color: Color(0xFFFB8B24), size: 24),
+              child: const Icon(
+                Icons.mark_email_read_outlined,
+                color: Color(0xFFFB8B24),
+                size: 24,
+              ),
             ),
             const SizedBox(width: 12),
             const Expanded(
@@ -141,7 +151,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
           children: [
             Text(
               "The email $email is already registered with Tingungu.",
-              style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.4),
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black87,
+                height: 1.4,
+              ),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -177,7 +191,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF3B0D11),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             child: const Text("Sign In Now"),
           ),
@@ -186,6 +202,84 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  Future<void> _signInWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        serverClientId:
+            '226294099341-d6n78vt0atgifcgmignq528bvfhq9t0u.apps.googleusercontent.com',
+      );
+
+      try {
+        await googleSignIn.signOut();
+      } catch (_) {}
+
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      if (googleAuth.idToken == null) {
+        throw Exception(
+          "Google ID Token is missing. Please ensure your SHA-1 fingerprint is registered in Firebase Console.",
+        );
+      }
+
+      final OAuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final UserCredential userCredential = await _auth.signInWithCredential(
+        credential,
+      );
+      final User? user = userCredential.user;
+
+      if (user != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_id', user.uid);
+
+        final docRef = _firestore.collection('users').doc(user.uid);
+        final doc = await docRef.get();
+
+        if (!doc.exists) {
+          await docRef.set({
+            'displayname': user.displayName ?? 'New User',
+            'email': user.email ?? '',
+            'avatar': user.photoURL ?? '',
+            'cellnumber': '',
+            'society': '',
+            'dob': '',
+            'profile_completed': false,
+            'wallet_balance': 0.0,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print('Google Sign-In Error: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Google Sign-In failed: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -202,10 +296,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 30),
                   const Text(
                     "Create Your Account",
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
                   const Text(
@@ -229,7 +320,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                           ),
                           validator: (value) =>
-                          value!.isEmpty ? "Please enter your name" : null,
+                              value!.isEmpty ? "Please enter your name" : null,
                         ),
                         const SizedBox(height: 20),
 
@@ -244,8 +335,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),
-                          validator: (value) =>
-                          value!.contains("@") ? null : "Enter a valid email",
+                          validator: (value) => value!.contains("@")
+                              ? null
+                              : "Enter a valid email",
                         ),
                         const SizedBox(height: 20),
 
@@ -271,11 +363,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 },
                                 child: RichText(
                                   text: const TextSpan(
-                                    text: "By creating an account, you agree to our ",
-                                    style: TextStyle(fontSize: 12, color: Colors.black87),
+                                    text:
+                                        "By creating an account, you agree to our ",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.black87,
+                                    ),
                                     children: [
                                       TextSpan(
-                                        text: "Terms of Service, Data Privacy Policy & POPIA.",
+                                        text:
+                                            "Terms of Service, Data Privacy Policy & POPIA.",
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: Color(0xFFFB8B24),
@@ -305,7 +402,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      child: const Text("Continue with Email", style: TextStyle(fontSize: 16)),
+                      child: const Text(
+                        "Continue with Email",
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  const Text("OR", style: TextStyle(color: Colors.grey)),
+                  const SizedBox(height: 15),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _isLoading ? null : _signInWithGoogle,
+                      icon: const Icon(
+                        Icons.g_mobiledata,
+                        size: 28,
+                        color: Color(0xFFFB8B24),
+                      ),
+                      label: const Text(
+                        "Continue with Google",
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFFFB8B24),
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: const BorderSide(color: Color(0xFFFB8B24)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
                     ),
                   ),
 
@@ -317,11 +445,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     onTap: () {
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(builder: (context) => const LoginScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const LoginScreen(),
+                        ),
                       );
                     },
                     child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                      padding: EdgeInsets.symmetric(
+                        vertical: 8.0,
+                        horizontal: 16.0,
+                      ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -359,10 +492,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      SpinKitFadingCircle(
-                        color: Colors.white,
-                        size: 60.0,
-                      ),
+                      SpinKitFadingCircle(color: Colors.white, size: 60.0),
                       SizedBox(height: 20),
                       Text(
                         "Creating your account...",

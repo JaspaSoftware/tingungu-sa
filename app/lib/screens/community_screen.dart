@@ -905,10 +905,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         '${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
                   }
 
-                  final avatarProvider = AvatarUtils.getAvatarImageProvider(
-                    senderAvatar,
-                  );
-
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: Row(
@@ -926,24 +922,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                 avatarUrl: senderAvatar,
                               );
                             },
-                            child: CircleAvatar(
-                              radius: 16,
-                              backgroundColor: const Color(
-                                0xFF3B0D11,
-                              ).withValues(alpha: 0.15),
-                              backgroundImage: avatarProvider,
-                              child: avatarProvider == null
-                                  ? Text(
-                                      senderName.isNotEmpty
-                                          ? senderName[0].toUpperCase()
-                                          : 'M',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF3B0D11),
-                                      ),
-                                    )
-                                  : null,
+                            child: _LiveSenderAvatar(
+                              senderId: senderId,
+                              fallbackAvatar: senderAvatar,
+                              senderName: senderName,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -1621,6 +1603,63 @@ class _CommunityScreenState extends State<CommunityScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Renders a chat message sender's avatar from their live `users/{senderId}`
+/// document instead of the `senderAvatar` copy frozen into the message at
+/// send-time, so older messages pick up profile picture changes immediately.
+class _LiveSenderAvatar extends StatelessWidget {
+  final String senderId;
+  final String fallbackAvatar;
+  final String senderName;
+
+  const _LiveSenderAvatar({
+    required this.senderId,
+    required this.fallbackAvatar,
+    required this.senderName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (senderId.isEmpty) {
+      return _avatar(AvatarUtils.getAvatarImageProvider(fallbackAvatar));
+    }
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(senderId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final liveData = snapshot.data?.data() as Map<String, dynamic>?;
+        final liveAvatar = liveData?['avatar'] as String?;
+        final avatarProvider = AvatarUtils.getAvatarImageProvider(
+          (liveAvatar != null && liveAvatar.trim().isNotEmpty)
+              ? liveAvatar
+              : fallbackAvatar,
+        );
+        return _avatar(avatarProvider);
+      },
+    );
+  }
+
+  Widget _avatar(ImageProvider? avatarProvider) {
+    return CircleAvatar(
+      radius: 16,
+      backgroundColor: const Color(0xFF3B0D11).withValues(alpha: 0.15),
+      backgroundImage: avatarProvider,
+      child: avatarProvider == null
+          ? Text(
+              senderName.isNotEmpty ? senderName[0].toUpperCase() : 'M',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF3B0D11),
+              ),
+            )
+          : null,
     );
   }
 }

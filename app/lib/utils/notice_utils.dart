@@ -2,10 +2,10 @@
 ///
 /// A notice with no `society` field (or a blank one) is treated as a
 /// church-wide announcement and is visible to everyone. A notice tagged
-/// with a `society` is only visible to members of a matching society -
-/// matching is case/whitespace-insensitive and tolerant of partial names
-/// (e.g. "Bethel" matches "Bethel Society"), consistent with how society
-/// names are already compared elsewhere in the app.
+/// with a `society` is only visible to members of that exact society -
+/// matching is case/whitespace-insensitive but otherwise exact, so a
+/// society whose name is a substring of another's (e.g. "Bethel" vs.
+/// "Bethel North") doesn't cross-match.
 bool isNoticeVisibleToSociety(
   Map<String, dynamic> noticeData,
   String? userSociety,
@@ -19,7 +19,5 @@ bool isNoticeVisibleToSociety(
   final normalizedUserSociety = (userSociety ?? '').trim().toLowerCase();
   if (normalizedUserSociety.isEmpty) return false;
 
-  return noticeSociety == normalizedUserSociety ||
-      noticeSociety.contains(normalizedUserSociety) ||
-      normalizedUserSociety.contains(noticeSociety);
+  return noticeSociety == normalizedUserSociety;
 }

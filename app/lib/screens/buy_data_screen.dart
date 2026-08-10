@@ -52,7 +52,7 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
       backgroundColor: const Color(0xFFFAF9F6),
       appBar: AppBar(
         centerTitle: true,
-        backgroundColor: const Color(0xFFE55B13),
+        backgroundColor: const Color(0xFF3B0D11),
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
@@ -78,10 +78,10 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
                   decoration: InputDecoration(
                     hintText: 'Enter phone number',
                     hintStyle: TextStyle(color: Colors.grey[400]),
-                    prefixIcon: const Icon(Icons.phone_android_rounded, color: Color(0xFFE55B13)),
+                    prefixIcon: const Icon(Icons.phone_android_rounded, color: Color(0xFFFB8B24)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE55B13)),
+                      borderSide: const BorderSide(color: Color(0xFFFB8B24)),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -89,7 +89,7 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE55B13), width: 2),
+                      borderSide: const BorderSide(color: Color(0xFFFB8B24), width: 2),
                     ),
                     filled: true,
                     fillColor: Colors.white,
@@ -132,7 +132,7 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
                                   Container(
                                     width: 10,
                                     height: 10,
-                                    decoration: const BoxDecoration(color: Color(0xFFE55B13), shape: BoxShape.circle),
+                                    decoration: const BoxDecoration(color: Color(0xFFFB8B24), shape: BoxShape.circle),
                                   ),
                                   const SizedBox(width: 12),
                                   Text(network, style: const TextStyle(fontWeight: FontWeight.w500)),
@@ -171,7 +171,7 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: isSelected ? const Color(0xFFE55B13) : Colors.grey.shade200,
+                            color: isSelected ? const Color(0xFFFB8B24) : Colors.grey.shade200,
                             width: isSelected ? 2 : 0.8,
                           ),
                           boxShadow: [
@@ -188,7 +188,7 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
                               style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.bold,
-                                color: isSelected ? const Color(0xFFE55B13) : const Color(0xFF3B0D11),
+                                color: isSelected ? const Color(0xFFFB8B24) : const Color(0xFF3B0D11),
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -205,13 +205,13 @@ class _BuyDataScreenState extends State<BuyDataScreen> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
-                      BoxShadow(color: const Color(0xFFE55B13).withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4)),
+                      BoxShadow(color: const Color(0xFFFB8B24).withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4)),
                     ],
                   ),
                   child: ElevatedButton(
                     onPressed: _proceed,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE55B13),
+                      backgroundColor: const Color(0xFFFB8B24),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

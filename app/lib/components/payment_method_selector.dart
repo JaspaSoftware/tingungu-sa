@@ -28,7 +28,7 @@ class _PaymentMethodSelectorState extends State<PaymentMethodSelector> {
   bool _isProcessing = false;
 
   final Future<PaymentConfiguration> _googlePayConfigFuture =
-      PaymentConfiguration.fromAsset('pay/default_google_pay_config.json');
+      PaymentConfiguration.fromAsset('lib/assets/pay/default_google_pay_config.json');
 
   void _onGooglePayResult(dynamic result) {
     debugPrint('Google Pay result: $result');
@@ -83,12 +83,14 @@ class _PaymentMethodSelectorState extends State<PaymentMethodSelector> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => PayFastWebView(formData: formData),
+        builder: (context) => PayFastWebView(formData: formData, isWalletTopUp: false),
       ),
     ).then((result) {
       // If result is true, payment was successful
       if (result == true) {
         widget.onPaymentSuccess('PayFast');
+      } else {
+        widget.onPaymentFailed();
       }
     });
   }

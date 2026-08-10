@@ -19,17 +19,36 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _optimisticAvatar;
 
   static const List<String> _months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
 
-  Future<void> _updateField(String field, String currentValue, String title) async {
-    TextEditingController controller = TextEditingController(text: currentValue);
+  Future<void> _updateField(
+    String field,
+    String currentValue,
+    String title,
+  ) async {
+    TextEditingController controller = TextEditingController(
+      text: currentValue,
+    );
     String? newValue = await showDialog<String>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Edit $title', style: const TextStyle(color: Color(0xFF3B0D11))),
+          title: Text(
+            'Edit $title',
+            style: const TextStyle(color: Color(0xFF3B0D11)),
+          ),
           content: TextField(
             controller: controller,
             decoration: InputDecoration(hintText: 'Enter $title'),
@@ -41,7 +60,9 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, controller.text),
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3B0D11)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF3B0D11),
+              ),
               child: const Text('Save'),
             ),
           ],
@@ -49,10 +70,13 @@ class _ProfilePageState extends State<ProfilePage> {
       },
     );
 
-    if (newValue != null && newValue.trim().isNotEmpty && newValue != currentValue) {
-      await FirebaseFirestore.instance.collection('users').doc(user?.uid).update({
-        field: newValue.trim(),
-      });
+    if (newValue != null &&
+        newValue.trim().isNotEmpty &&
+        newValue != currentValue) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user?.uid)
+          .update({field: newValue.trim()});
       _checkProfileCompletion();
     }
   }
@@ -62,7 +86,9 @@ class _ProfilePageState extends State<ProfilePage> {
     String selectedMonth = 'January';
     int activeMode = 0; // 0 = Visual Dropdown/Calendar, 1 = Type Digits
 
-    final TextEditingController digitController = TextEditingController(text: currentDob);
+    final TextEditingController digitController = TextEditingController(
+      text: currentDob,
+    );
 
     // Try parsing existing DOB
     if (currentDob.isNotEmpty) {
@@ -139,9 +165,13 @@ class _ProfilePageState extends State<ProfilePage> {
                             child: GestureDetector(
                               onTap: () => setModalState(() => activeMode = 0),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: activeMode == 0 ? const Color(0xFF3B0D11) : Colors.grey[100],
+                                  color: activeMode == 0
+                                      ? const Color(0xFF3B0D11)
+                                      : Colors.grey[100],
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Center(
@@ -151,13 +181,17 @@ class _ProfilePageState extends State<ProfilePage> {
                                       Icon(
                                         Icons.calendar_month,
                                         size: 18,
-                                        color: activeMode == 0 ? Colors.white : Colors.grey[700],
+                                        color: activeMode == 0
+                                            ? Colors.white
+                                            : Colors.grey[700],
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
                                         'Choose Date',
                                         style: TextStyle(
-                                          color: activeMode == 0 ? Colors.white : Colors.grey[700],
+                                          color: activeMode == 0
+                                              ? Colors.white
+                                              : Colors.grey[700],
                                           fontWeight: FontWeight.bold,
                                           fontSize: 13,
                                         ),
@@ -173,9 +207,13 @@ class _ProfilePageState extends State<ProfilePage> {
                             child: GestureDetector(
                               onTap: () => setModalState(() => activeMode = 1),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: activeMode == 1 ? const Color(0xFF3B0D11) : Colors.grey[100],
+                                  color: activeMode == 1
+                                      ? const Color(0xFF3B0D11)
+                                      : Colors.grey[100],
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Center(
@@ -185,13 +223,17 @@ class _ProfilePageState extends State<ProfilePage> {
                                       Icon(
                                         Icons.edit,
                                         size: 18,
-                                        color: activeMode == 1 ? Colors.white : Colors.grey[700],
+                                        color: activeMode == 1
+                                            ? Colors.white
+                                            : Colors.grey[700],
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
                                         'Type Digits',
                                         style: TextStyle(
-                                          color: activeMode == 1 ? Colors.white : Colors.grey[700],
+                                          color: activeMode == 1
+                                              ? Colors.white
+                                              : Colors.grey[700],
                                           fontWeight: FontWeight.bold,
                                           fontSize: 13,
                                         ),
@@ -216,12 +258,23 @@ class _ProfilePageState extends State<ProfilePage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('Day', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                  const Text(
+                                    'Day',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
                                   const SizedBox(height: 6),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
                                     decoration: BoxDecoration(
-                                      border: Border.all(color: Colors.grey.shade300),
+                                      border: Border.all(
+                                        color: Colors.grey.shade300,
+                                      ),
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: DropdownButtonHideUnderline(
@@ -229,13 +282,23 @@ class _ProfilePageState extends State<ProfilePage> {
                                         value: selectedDay,
                                         isExpanded: true,
                                         items: List.generate(31, (i) => i + 1)
-                                            .map((day) => DropdownMenuItem<int>(
-                                                  value: day,
-                                                  child: Text('$day', style: const TextStyle(fontSize: 15)),
-                                                ))
+                                            .map(
+                                              (day) => DropdownMenuItem<int>(
+                                                value: day,
+                                                child: Text(
+                                                  '$day',
+                                                  style: const TextStyle(
+                                                    fontSize: 15,
+                                                  ),
+                                                ),
+                                              ),
+                                            )
                                             .toList(),
                                         onChanged: (val) {
-                                          if (val != null) setModalState(() => selectedDay = val);
+                                          if (val != null)
+                                            setModalState(
+                                              () => selectedDay = val,
+                                            );
                                         },
                                       ),
                                     ),
@@ -250,12 +313,23 @@ class _ProfilePageState extends State<ProfilePage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('Month', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                  const Text(
+                                    'Month',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
                                   const SizedBox(height: 6),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
                                     decoration: BoxDecoration(
-                                      border: Border.all(color: Colors.grey.shade300),
+                                      border: Border.all(
+                                        color: Colors.grey.shade300,
+                                      ),
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: DropdownButtonHideUnderline(
@@ -263,13 +337,24 @@ class _ProfilePageState extends State<ProfilePage> {
                                         value: selectedMonth,
                                         isExpanded: true,
                                         items: _months
-                                            .map((month) => DropdownMenuItem<String>(
-                                                  value: month,
-                                                  child: Text(month, style: const TextStyle(fontSize: 15)),
-                                                ))
+                                            .map(
+                                              (month) =>
+                                                  DropdownMenuItem<String>(
+                                                    value: month,
+                                                    child: Text(
+                                                      month,
+                                                      style: const TextStyle(
+                                                        fontSize: 15,
+                                                      ),
+                                                    ),
+                                                  ),
+                                            )
                                             .toList(),
                                         onChanged: (val) {
-                                          if (val != null) setModalState(() => selectedMonth = val);
+                                          if (val != null)
+                                            setModalState(
+                                              () => selectedMonth = val,
+                                            );
                                         },
                                       ),
                                     ),
@@ -297,11 +382,20 @@ class _ProfilePageState extends State<ProfilePage> {
                               },
                             );
                           },
-                          icon: const Icon(Icons.calendar_today, color: Color(0xFFFB8B24), size: 18),
-                          label: const Text('Open Full Calendar Picker', style: TextStyle(color: Color(0xFFFB8B24))),
+                          icon: const Icon(
+                            Icons.calendar_today,
+                            color: Color(0xFFFB8B24),
+                            size: 18,
+                          ),
+                          label: const Text(
+                            'Open Full Calendar Picker',
+                            style: TextStyle(color: Color(0xFFFB8B24)),
+                          ),
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: Color(0xFFFB8B24)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                             minimumSize: const Size.fromHeight(45),
                           ),
                         ),
@@ -314,8 +408,13 @@ class _ProfilePageState extends State<ProfilePage> {
                           decoration: InputDecoration(
                             labelText: 'Enter Birthday (e.g. 14 June or 14/06)',
                             hintText: '14 June',
-                            prefixIcon: const Icon(Icons.edit_calendar, color: Color(0xFFFB8B24)),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            prefixIcon: const Icon(
+                              Icons.edit_calendar,
+                              color: Color(0xFFFB8B24),
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -333,7 +432,10 @@ class _ProfilePageState extends State<ProfilePage> {
                         child: ElevatedButton(
                           onPressed: () {
                             if (activeMode == 0) {
-                              Navigator.pop(context, '$selectedDay $selectedMonth');
+                              Navigator.pop(
+                                context,
+                                '$selectedDay $selectedMonth',
+                              );
                             } else {
                               final text = digitController.text.trim();
                               if (text.isNotEmpty) {
@@ -347,9 +449,17 @@ class _ProfilePageState extends State<ProfilePage> {
                             backgroundColor: const Color(0xFF3B0D11),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
-                          child: const Text('Save Birthday', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          child: const Text(
+                            'Save Birthday',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -363,9 +473,10 @@ class _ProfilePageState extends State<ProfilePage> {
     );
 
     if (result != null && result.trim().isNotEmpty && result != currentDob) {
-      await FirebaseFirestore.instance.collection('users').doc(user?.uid).update({
-        'dob': result.trim(),
-      });
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user?.uid)
+          .update({'dob': result.trim()});
       _checkProfileCompletion();
     }
   }
@@ -387,20 +498,30 @@ class _ProfilePageState extends State<ProfilePage> {
           builder: (context, setDialogState) {
             final monthName = _months[tempMonthIndex];
             final daysInMonth = DateTime(2000, tempMonthIndex + 2, 0).day;
-            final firstWeekday = DateTime(2000, tempMonthIndex + 1, 1).weekday % 7;
+            final firstWeekday =
+                DateTime(2000, tempMonthIndex + 1, 1).weekday % 7;
 
             if (tempDay > daysInMonth) tempDay = daysInMonth;
 
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 0,
+              ),
               title: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
                     'Select Birthday',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF3B0D11)),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF3B0D11),
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close, size: 20),
@@ -418,7 +539,10 @@ class _ProfilePageState extends State<ProfilePage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.chevron_left, color: Color(0xFF3B0D11)),
+                          icon: const Icon(
+                            Icons.chevron_left,
+                            color: Color(0xFF3B0D11),
+                          ),
                           onPressed: () {
                             setDialogState(() {
                               tempMonthIndex = (tempMonthIndex - 1 + 12) % 12;
@@ -427,10 +551,17 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         Text(
                           monthName,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF3B0D11)),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF3B0D11),
+                          ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.chevron_right, color: Color(0xFF3B0D11)),
+                          icon: const Icon(
+                            Icons.chevron_right,
+                            color: Color(0xFF3B0D11),
+                          ),
                           onPressed: () {
                             setDialogState(() {
                               tempMonthIndex = (tempMonthIndex + 1) % 12;
@@ -445,15 +576,21 @@ class _ProfilePageState extends State<ProfilePage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: const ['S', 'M', 'T', 'W', 'T', 'F', 'S']
-                          .map((day) => SizedBox(
-                                width: 36,
-                                child: Center(
-                                  child: Text(
-                                    day,
-                                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 13),
+                          .map(
+                            (day) => SizedBox(
+                              width: 36,
+                              child: Center(
+                                child: Text(
+                                  day,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey,
+                                    fontSize: 13,
                                   ),
                                 ),
-                              ))
+                              ),
+                            ),
+                          )
                           .toList(),
                     ),
                     const SizedBox(height: 8),
@@ -462,11 +599,12 @@ class _ProfilePageState extends State<ProfilePage> {
                     GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 7,
-                        mainAxisSpacing: 6,
-                        crossAxisSpacing: 6,
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 7,
+                            mainAxisSpacing: 6,
+                            crossAxisSpacing: 6,
+                          ),
                       itemCount: firstWeekday + daysInMonth,
                       itemBuilder: (context, index) {
                         if (index < firstWeekday) {
@@ -483,15 +621,21 @@ class _ProfilePageState extends State<ProfilePage> {
                           },
                           child: Container(
                             decoration: BoxDecoration(
-                              color: isSelected ? const Color(0xFFFB8B24) : Colors.transparent,
+                              color: isSelected
+                                  ? const Color(0xFFFB8B24)
+                                  : Colors.transparent,
                               shape: BoxShape.circle,
                             ),
                             child: Center(
                               child: Text(
                                 '$dayNum',
                                 style: TextStyle(
-                                  color: isSelected ? Colors.white : Colors.black87,
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : Colors.black87,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
                                   fontSize: 14,
                                 ),
                               ),
@@ -507,7 +651,10 @@ class _ProfilePageState extends State<ProfilePage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(color: Colors.grey),
+                  ),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -517,9 +664,14 @@ class _ProfilePageState extends State<ProfilePage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3B0D11),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                  child: const Text('Confirm', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    'Confirm',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             );
@@ -530,16 +682,20 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _checkProfileCompletion() async {
-    final doc = await FirebaseFirestore.instance.collection('users').doc(user?.uid).get();
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user?.uid)
+        .get();
     if (doc.exists) {
       final data = doc.data()!;
       final displayname = data['displayname'] ?? '';
       final society = data['society'] ?? '';
       final dob = data['dob'] ?? '';
       if (displayname.isNotEmpty && society.isNotEmpty && dob.isNotEmpty) {
-        await FirebaseFirestore.instance.collection('users').doc(user?.uid).update({
-          'profile_completed': true,
-        });
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user?.uid)
+            .update({'profile_completed': true});
       }
     }
   }
@@ -551,7 +707,10 @@ class _ProfilePageState extends State<ProfilePage> {
         appBar: AppBar(
           centerTitle: true,
           iconTheme: const IconThemeData(color: Colors.white),
-          title: const Text('Profile', style: TextStyle(color: Colors.white, fontSize: 16)),
+          title: const Text(
+            'Profile',
+            style: TextStyle(color: Colors.white, fontSize: 16),
+          ),
           backgroundColor: const Color(0xFF3B0D11),
         ),
         body: Center(
@@ -560,11 +719,19 @@ class _ProfilePageState extends State<ProfilePage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.account_circle_outlined, size: 80, color: Color(0xFF3B0D11)),
+                const Icon(
+                  Icons.account_circle_outlined,
+                  size: 80,
+                  color: Color(0xFF3B0D11),
+                ),
                 const SizedBox(height: 16),
                 const Text(
                   'Guest User',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF3B0D11)),
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF3B0D11),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
@@ -585,8 +752,13 @@ class _ProfilePageState extends State<ProfilePage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFB8B24),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ],
@@ -600,15 +772,23 @@ class _ProfilePageState extends State<ProfilePage> {
       appBar: AppBar(
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text('Profile', style: TextStyle(color: Colors.white, fontSize: 16)),
+        title: const Text(
+          'Profile',
+          style: TextStyle(color: Colors.white, fontSize: 16),
+        ),
         backgroundColor: const Color(0xFF3B0D11),
       ),
       body: SafeArea(
         child: StreamBuilder<DocumentSnapshot>(
-          stream: FirebaseFirestore.instance.collection('users').doc(user?.uid).snapshots(),
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(user?.uid)
+              .snapshots(),
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator(color: Color(0xFF3B0D11)));
+              return const Center(
+                child: CircularProgressIndicator(color: Color(0xFF3B0D11)),
+              );
             }
 
             var userData = snapshot.data!.data() as Map<String, dynamic>? ?? {};
@@ -623,38 +803,54 @@ class _ProfilePageState extends State<ProfilePage> {
               children: [
                 const SizedBox(height: 20),
                 Center(
-                  child: GestureDetector(
-                    onTap: () => AvatarUtils.showAvatarUploadOptions(
-                      context,
-                      currentAvatar: avatarUrl,
-                      onAvatarUpdated: (newAvatar) {
-                        setState(() {
-                          _optimisticAvatar = newAvatar;
-                        });
-                      },
-                    ),
-                    child: Stack(
-                      children: [
-                        CircleAvatar(
+                  child: Stack(
+                    children: [
+                      GestureDetector(
+                        onTap: () => AvatarUtils.showFullAvatarView(
+                          context,
+                          avatarUrl: avatarUrl,
+                          name: displayName,
+                        ),
+                        child: CircleAvatar(
                           key: ValueKey(avatarUrl),
                           radius: 50,
-                          backgroundColor: const Color(0xFF3B0D11).withValues(alpha: 0.1),
-                          backgroundImage: AvatarUtils.getAvatarImageProviderOrDefault(avatarUrl),
+                          backgroundColor: const Color(
+                            0xFF3B0D11,
+                          ).withValues(alpha: 0.1),
+                          backgroundImage:
+                              AvatarUtils.getAvatarImageProviderOrDefault(
+                                avatarUrl,
+                              ),
                         ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: GestureDetector(
+                          onTap: () => AvatarUtils.showAvatarUploadOptions(
+                            context,
+                            currentAvatar: avatarUrl,
+                            onAvatarUpdated: (newAvatar) {
+                              setState(() {
+                                _optimisticAvatar = newAvatar;
+                              });
+                            },
+                          ),
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: const BoxDecoration(
                               color: Color(0xFFFB8B24),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
-                        )
-                      ],
-                    ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 30),
@@ -670,38 +866,123 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  IconData _iconForField(String field) {
+    switch (field) {
+      case 'society':
+        return Icons.church_rounded;
+      case 'dob':
+        return Icons.cake_rounded;
+      default:
+        return Icons.person_rounded;
+    }
+  }
+
   Widget _buildProfileTile(String title, String subtitle, String field) {
-    return Card(
-      elevation: 0,
+    final hasValue = subtitle.isNotEmpty;
+
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade200),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade200, width: 0.8),
       ),
-      child: ListTile(
-        title: Text(title, style: const TextStyle(fontSize: 14, color: Colors.grey)),
-        subtitle: Text(
-          subtitle.isNotEmpty ? subtitle : 'Not provided',
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 16, color: Colors.black, fontWeight: FontWeight.w500),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () async {
+            if (field == 'society') {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      SocietySelectionPage(currentSociety: subtitle),
+                ),
+              );
+              _checkProfileCompletion();
+            } else if (field == 'dob') {
+              _showDobPicker(subtitle);
+            } else {
+              _updateField(field, subtitle, title);
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFB8B24).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    _iconForField(field),
+                    color: const Color(0xFFFB8B24),
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[600],
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        hasValue ? subtitle : 'Not provided',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.bold,
+                          fontStyle: hasValue
+                              ? FontStyle.normal
+                              : FontStyle.italic,
+                          color: hasValue
+                              ? const Color(0xFF3B0D11)
+                              : Colors.grey[400],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3B0D11).withValues(alpha: 0.06),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Color(0xFF3B0D11),
+                    size: 20,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-        trailing: const Icon(Icons.edit, color: Color(0xFFFB8B24)),
-        onTap: () async {
-          if (field == 'society') {
-            await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => SocietySelectionPage(currentSociety: subtitle)),
-            );
-            _checkProfileCompletion();
-          } else if (field == 'dob') {
-            _showDobPicker(subtitle);
-          } else {
-            _updateField(field, subtitle, title);
-          }
-        },
       ),
     );
   }
 }
-

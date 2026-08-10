@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../data/society_model.dart';
 import '../services/society_service.dart';
+import '../services/presence_service.dart';
 import '../utils/avatar_utils.dart';
 import 'society_selection_screen.dart';
 
@@ -175,175 +176,351 @@ class _CommunityScreenState extends State<CommunityScreen> {
     Map<String, dynamic> userData = {};
     if (memberId.isNotEmpty) {
       try {
-        final doc = await FirebaseFirestore.instance.collection('users').doc(memberId).get();
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(memberId)
+            .get();
         if (doc.exists) {
           userData = doc.data() ?? {};
         }
       } catch (_) {}
     }
 
-    final displayName = userData['displayname'] ?? userData['display_name'] ?? (name.isNotEmpty ? name : 'Member');
+    final displayName =
+        userData['displayname'] ??
+        userData['display_name'] ??
+        (name.isNotEmpty ? name : 'Member');
     final avatar = userData['avatar']?.toString() ?? avatarUrl;
     final userEmail = userData['email']?.toString() ?? email ?? '';
     final userCell = userData['cellnumber']?.toString() ?? cellNumber ?? '';
     final userRole = userData['role']?.toString() ?? role ?? 'Society Member';
-    final userSocietyName = userData['society'] ?? userData['society_name'] ?? userSociety?.name ?? 'Methodist Society';
+    final userSocietyName =
+        userData['society'] ??
+        userData['society_name'] ??
+        userSociety?.name ??
+        'Methodist Society';
 
     if (!mounted) return;
 
     final avatarProvider = AvatarUtils.getAvatarImageProvider(avatar);
     final isMe = memberId == FirebaseAuth.instance.currentUser?.uid;
+    final presenceActive = userData['presence_active'] == true;
+    final currentStatus = userData['presence_status']?.toString();
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => SafeArea(
-        child: Container(
-          padding: EdgeInsets.fromLTRB(
-            24,
-            24,
-            24,
-            MediaQuery.of(ctx).padding.bottom > 0 ? 16 : 24,
+      builder: (ctx) {
+        String? selectedStatus = currentStatus;
+        bool selectedActive = presenceActive;
+
+        return StatefulBuilder(
+          builder: (context, setModalState) => SafeArea(
+            child: Container(
+              padding: EdgeInsets.fromLTRB(
+                24,
+                24,
+                24,
+                MediaQuery.of(ctx).padding.bottom > 0 ? 16 : 24,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  GestureDetector(
+                    onTap: () => AvatarUtils.showFullAvatarView(
+                      context,
+                      avatarUrl: avatar,
+                      name: displayName,
+                    ),
+                    child: CircleAvatar(
+                      radius: 42,
+                      backgroundColor: const Color(
+                        0xFF3B0D11,
+                      ).withValues(alpha: 0.15),
+                      backgroundImage: avatarProvider,
+                      child: avatarProvider == null
+                          ? Text(
+                              displayName.isNotEmpty
+                                  ? displayName[0].toUpperCase()
+                                  : 'M',
+                              style: const TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF3B0D11),
+                              ),
+                            )
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  Text(
+                    displayName,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF3B0D11),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isMe
+                          ? const Color(0xFFFB8B24).withValues(alpha: 0.15)
+                          : const Color(0xFF3B0D11).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      isMe ? 'YOU • $userRole' : userRole,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isMe
+                            ? const Color(0xFFFB8B24)
+                            : const Color(0xFF3B0D11),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  if (isMe) ...[
+                    const Text(
+                      'Set your status',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildStatusChip(
+                            label: 'Online',
+                            color: Colors.green.shade600,
+                            isSelected:
+                                !selectedActive ||
+                                selectedStatus == null ||
+                                selectedStatus == 'online',
+                            onTap: () {
+                              setModalState(() {
+                                selectedStatus = 'online';
+                                selectedActive = true;
+                              });
+                              PresenceService.setStatus(PresenceStatus.online);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildStatusChip(
+                            label: 'Away',
+                            color: const Color(0xFFFB8B24),
+                            isSelected:
+                                selectedActive && selectedStatus == 'away',
+                            onTap: () {
+                              setModalState(() {
+                                selectedStatus = 'away';
+                                selectedActive = true;
+                              });
+                              PresenceService.setStatus(PresenceStatus.away);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildStatusChip(
+                            label: 'Busy',
+                            color: Colors.red.shade600,
+                            isSelected:
+                                selectedActive && selectedStatus == 'busy',
+                            onTap: () {
+                              setModalState(() {
+                                selectedStatus = 'busy';
+                                selectedActive = true;
+                              });
+                              PresenceService.setStatus(PresenceStatus.busy);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  const Divider(),
+                  const SizedBox(height: 8),
+
+                  _buildProfileDetailRow(
+                    Icons.church,
+                    'Society',
+                    userSocietyName,
+                  ),
+                  if (userSociety?.circuit != null)
+                    _buildProfileDetailRow(
+                      Icons.location_city,
+                      'Circuit',
+                      userSociety!.circuit!,
+                    ),
+                  if (userEmail.isNotEmpty)
+                    _buildProfileDetailRow(
+                      Icons.email_outlined,
+                      'Email',
+                      userEmail,
+                    ),
+                  if (userCell.isNotEmpty)
+                    _buildProfileDetailRow(
+                      Icons.phone_outlined,
+                      'Contact',
+                      userCell,
+                    ),
+                  _buildProfileDetailRow(
+                    Icons.circle,
+                    'Status',
+                    PresenceService.labelFor(
+                      active: selectedActive,
+                      status: selectedStatus,
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF3B0D11),
+                            side: const BorderSide(color: Color(0xFF3B0D11)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Close',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                      if (!isMe) ...[
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              setState(() {
+                                _selectedTab = 0;
+                              });
+                              _messageController.text = '@$displayName ';
+                              _messageController.selection =
+                                  TextSelection.fromPosition(
+                                    TextPosition(
+                                      offset: _messageController.text.length,
+                                    ),
+                                  );
+                            },
+                            icon: const Icon(
+                              Icons.chat_bubble_outline,
+                              size: 18,
+                            ),
+                            label: Text(
+                              'Message @$displayName',
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF3B0D11),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            ),
           ),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatusChip({
+    required VoidCallback onTap,
+    required String label,
+    required Color color,
+    required bool isSelected,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? color.withValues(alpha: 0.12)
+              : Colors.grey.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? color : Colors.transparent,
+            width: 1.5,
           ),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            CircleAvatar(
-              radius: 42,
-              backgroundColor: const Color(0xFF3B0D11).withValues(alpha: 0.15),
-              backgroundImage: avatarProvider,
-              child: avatarProvider == null
-                  ? Text(
-                      displayName.isNotEmpty ? displayName[0].toUpperCase() : 'M',
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF3B0D11),
-                      ),
-                    )
-                  : null,
-            ),
-            const SizedBox(height: 14),
-
-            Text(
-              displayName,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF3B0D11),
-              ),
-            ),
-            const SizedBox(height: 4),
-
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: isMe
-                    ? const Color(0xFFFB8B24).withValues(alpha: 0.15)
-                    : const Color(0xFF3B0D11).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                isMe ? 'YOU • $userRole' : userRole,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: isMe ? const Color(0xFFFB8B24) : const Color(0xFF3B0D11),
-                ),
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: isSelected ? const Color(0xFF3B0D11) : Colors.grey[600],
               ),
             ),
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 8),
-
-            _buildProfileDetailRow(Icons.church, 'Society', userSocietyName),
-            if (userSociety?.circuit != null)
-              _buildProfileDetailRow(Icons.location_city, 'Circuit', userSociety!.circuit!),
-            if (userEmail.isNotEmpty)
-              _buildProfileDetailRow(Icons.email_outlined, 'Email', userEmail),
-            if (userCell.isNotEmpty)
-              _buildProfileDetailRow(Icons.phone_outlined, 'Contact', userCell),
-            _buildProfileDetailRow(Icons.verified_user_outlined, 'Member Status', 'Active Member'),
-
-            const SizedBox(height: 20),
-
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF3B0D11),
-                      side: const BorderSide(color: Color(0xFF3B0D11)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'Close',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-                if (!isMe) ...[
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        setState(() {
-                          _selectedTab = 0;
-                        });
-                        _messageController.text = '@$displayName ';
-                        _messageController.selection = TextSelection.fromPosition(
-                          TextPosition(offset: _messageController.text.length),
-                        );
-                      },
-                      icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                      label: Text(
-                        'Message @$displayName',
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF3B0D11),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 10),
           ],
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildProfileDetailRow(IconData icon, String title, String value) {
     return Padding(
@@ -352,10 +529,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
         children: [
           Icon(icon, size: 20, color: const Color(0xFFFB8B24)),
           const SizedBox(width: 12),
-          Text(
-            title,
-            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-          ),
+          Text(title, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
           const Spacer(),
           Flexible(
             child: Text(
@@ -391,7 +565,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
           .doc(currentUser.uid)
           .get();
       final userData = userDoc.data() ?? {};
-      final senderName = userData['displayname'] ??
+      final senderName =
+          userData['displayname'] ??
           userData['display_name'] ??
           currentUser.displayName ??
           'Member';
@@ -404,18 +579,18 @@ class _CommunityScreenState extends State<CommunityScreen> {
           .doc(userSociety!.name.trim())
           .collection('messages')
           .add({
-        'senderId': currentUser.uid,
-        'senderName': senderName,
-        'senderAvatar': senderAvatar,
-        'text': text,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
+            'senderId': currentUser.uid,
+            'senderName': senderName,
+            'senderAvatar': senderAvatar,
+            'text': text,
+            'timestamp': FieldValue.serverTimestamp(),
+          });
     } catch (e) {
       if (kDebugMode) print('Error sending message: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send message: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to send message: $e')));
       }
     } finally {
       if (mounted) {
@@ -524,8 +699,15 @@ class _CommunityScreenState extends State<CommunityScreen> {
             final targetName = userSociety!.name.toLowerCase().trim();
             memberCount = snapshot.data!.docs.where((doc) {
               final data = doc.data() as Map<String, dynamic>;
-              final userSoc = (data['society'] ?? data['society_name'])?.toString().toLowerCase().trim() ?? '';
-              return userSoc == targetName || userSoc.contains(targetName) || targetName.contains(userSoc);
+              final userSoc =
+                  (data['society'] ?? data['society_name'])
+                      ?.toString()
+                      .toLowerCase()
+                      .trim() ??
+                  '';
+              return userSoc == targetName ||
+                  userSoc.contains(targetName) ||
+                  targetName.contains(userSoc);
             }).length;
           }
 
@@ -653,7 +835,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(
                   child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3B0D11)),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFF3B0D11),
+                    ),
                   ),
                 );
               }
@@ -700,7 +884,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
               return ListView.builder(
                 reverse: true,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 itemCount: docs.length,
                 itemBuilder: (context, index) {
                   final data = docs[index].data() as Map<String, dynamic>;
@@ -714,16 +901,16 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   String timeStr = '';
                   if (timestamp != null) {
                     final dt = timestamp.toDate();
-                    timeStr = '${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+                    timeStr =
+                        '${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
                   }
-
-                  final avatarProvider = AvatarUtils.getAvatarImageProvider(senderAvatar);
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: Row(
-                      mainAxisAlignment:
-                          isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                      mainAxisAlignment: isMe
+                          ? MainAxisAlignment.end
+                          : MainAxisAlignment.start,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         if (!isMe) ...[
@@ -735,22 +922,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                 avatarUrl: senderAvatar,
                               );
                             },
-                            child: CircleAvatar(
-                              radius: 16,
-                              backgroundColor: const Color(0xFF3B0D11).withValues(alpha: 0.15),
-                              backgroundImage: avatarProvider,
-                              child: avatarProvider == null
-                                  ? Text(
-                                      senderName.isNotEmpty
-                                          ? senderName[0].toUpperCase()
-                                          : 'M',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF3B0D11),
-                                      ),
-                                    )
-                                  : null,
+                            child: _LiveSenderAvatar(
+                              senderId: senderId,
+                              fallbackAvatar: senderAvatar,
+                              senderName: senderName,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -771,7 +946,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                     );
                                   },
                                   child: Padding(
-                                    padding: const EdgeInsets.only(left: 4, bottom: 2),
+                                    padding: const EdgeInsets.only(
+                                      left: 4,
+                                      bottom: 2,
+                                    ),
                                     child: Text(
                                       senderName,
                                       style: TextStyle(
@@ -799,7 +977,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.04),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.04,
+                                      ),
                                       blurRadius: 4,
                                       offset: const Offset(0, 2),
                                     ),
@@ -812,7 +992,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                       text,
                                       style: TextStyle(
                                         fontSize: 14,
-                                        color: isMe ? Colors.white : Colors.black87,
+                                        color: isMe
+                                            ? Colors.white
+                                            : Colors.black87,
                                         height: 1.3,
                                       ),
                                     ),
@@ -884,11 +1066,17 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide(color: Colors.grey.shade300, width: 0.8),
+                      borderSide: BorderSide(
+                        color: Colors.grey.shade300,
+                        width: 0.8,
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(24),
-                      borderSide: const BorderSide(color: Color(0xFFFB8B24), width: 1.5),
+                      borderSide: const BorderSide(
+                        color: Color(0xFFFB8B24),
+                        width: 1.5,
+                      ),
                     ),
                   ),
                 ),
@@ -910,7 +1098,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                             height: 18,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             ),
                           )
                         : const Icon(
@@ -957,7 +1147,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
         final allDocs = snapshot.data?.docs ?? [];
         final members = allDocs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
-          final userSoc = (data['society'] ?? data['society_name'])?.toString().toLowerCase().trim() ?? '';
+          final userSoc =
+              (data['society'] ?? data['society_name'])
+                  ?.toString()
+                  .toLowerCase()
+                  .trim() ??
+              '';
           return userSoc == targetSociety ||
               userSoc.contains(targetSociety) ||
               targetSociety.contains(userSoc);
@@ -991,12 +1186,24 @@ class _CommunityScreenState extends State<CommunityScreen> {
             final data = doc.data() as Map<String, dynamic>;
             final isMe = doc.id == currentUser?.uid;
 
-            final name = data['displayname'] ??
+            final name =
+                data['displayname'] ??
                 data['display_name'] ??
                 data['email'] ??
                 'Member';
             final avatar = data['avatar']?.toString() ?? '';
-            final role = data['role']?.toString() ?? (isMe ? 'Active Member' : 'Member');
+            final role =
+                data['role']?.toString() ?? (isMe ? 'Active Member' : 'Member');
+            final presenceActive = data['presence_active'] == true;
+            final presenceStatus = data['presence_status']?.toString();
+            final presenceColor = PresenceService.colorFor(
+              active: presenceActive,
+              status: presenceStatus,
+            );
+            final presenceLabel = PresenceService.labelFor(
+              active: presenceActive,
+              status: presenceStatus,
+            );
 
             final avatarProvider = AvatarUtils.getAvatarImageProvider(avatar);
 
@@ -1024,20 +1231,47 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     cellNumber: data['cellnumber']?.toString(),
                   );
                 },
-                leading: CircleAvatar(
-                  radius: 22,
-                  backgroundColor: const Color(0xFF3B0D11).withValues(alpha: 0.12),
-                  backgroundImage: avatarProvider,
-                  child: avatarProvider == null
-                      ? Text(
-                          name.isNotEmpty ? name[0].toUpperCase() : 'M',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF3B0D11),
-                          ),
-                        )
-                      : null,
+                leading: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    GestureDetector(
+                      onTap: () => AvatarUtils.showFullAvatarView(
+                        context,
+                        avatarUrl: avatar,
+                        name: name,
+                      ),
+                      child: CircleAvatar(
+                        radius: 22,
+                        backgroundColor: const Color(
+                          0xFF3B0D11,
+                        ).withValues(alpha: 0.12),
+                        backgroundImage: avatarProvider,
+                        child: avatarProvider == null
+                            ? Text(
+                                name.isNotEmpty ? name[0].toUpperCase() : 'M',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF3B0D11),
+                                ),
+                              )
+                            : null,
+                      ),
+                    ),
+                    Positioned(
+                      bottom: -1,
+                      right: -1,
+                      child: Container(
+                        width: 13,
+                        height: 13,
+                        decoration: BoxDecoration(
+                          color: presenceColor,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 title: Row(
                   children: [
@@ -1053,7 +1287,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     ),
                     if (isMe)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFFB8B24),
                           borderRadius: BorderRadius.circular(10),
@@ -1076,15 +1313,23 @@ class _CommunityScreenState extends State<CommunityScreen> {
                       Container(
                         width: 8,
                         height: 8,
-                        decoration: const BoxDecoration(
-                          color: Colors.green,
+                        decoration: BoxDecoration(
+                          color: presenceColor,
                           shape: BoxShape.circle,
                         ),
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        role,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        presenceLabel,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      Text(
+                        ' · $role',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                       ),
                     ],
                   ),
@@ -1160,7 +1405,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF3B0D11).withValues(alpha: 0.12),
+                          color: const Color(
+                            0xFF3B0D11,
+                          ).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -1207,7 +1454,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                _buildInfoRow('Circuit', userSociety!.circuit ?? 'Methodist Circuit'),
+                _buildInfoRow(
+                  'Circuit',
+                  userSociety!.circuit ?? 'Methodist Circuit',
+                ),
                 const SizedBox(height: 12),
                 _buildInfoRow('Location', userSociety!.location ?? 'TBC'),
                 const SizedBox(height: 12),
@@ -1353,6 +1603,63 @@ class _CommunityScreenState extends State<CommunityScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Renders a chat message sender's avatar from their live `users/{senderId}`
+/// document instead of the `senderAvatar` copy frozen into the message at
+/// send-time, so older messages pick up profile picture changes immediately.
+class _LiveSenderAvatar extends StatelessWidget {
+  final String senderId;
+  final String fallbackAvatar;
+  final String senderName;
+
+  const _LiveSenderAvatar({
+    required this.senderId,
+    required this.fallbackAvatar,
+    required this.senderName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (senderId.isEmpty) {
+      return _avatar(AvatarUtils.getAvatarImageProvider(fallbackAvatar));
+    }
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(senderId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final liveData = snapshot.data?.data() as Map<String, dynamic>?;
+        final liveAvatar = liveData?['avatar'] as String?;
+        final avatarProvider = AvatarUtils.getAvatarImageProvider(
+          (liveAvatar != null && liveAvatar.trim().isNotEmpty)
+              ? liveAvatar
+              : fallbackAvatar,
+        );
+        return _avatar(avatarProvider);
+      },
+    );
+  }
+
+  Widget _avatar(ImageProvider? avatarProvider) {
+    return CircleAvatar(
+      radius: 16,
+      backgroundColor: const Color(0xFF3B0D11).withValues(alpha: 0.15),
+      backgroundImage: avatarProvider,
+      child: avatarProvider == null
+          ? Text(
+              senderName.isNotEmpty ? senderName[0].toUpperCase() : 'M',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF3B0D11),
+              ),
+            )
+          : null,
     );
   }
 }

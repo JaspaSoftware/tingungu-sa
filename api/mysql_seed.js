@@ -157,16 +157,14 @@ INSERT IGNORE INTO persons (person_id, surname, first_name, cellphone, email) VA
 (34, 'MADUMO', 'PETRUS', '0723986960', 'madumop@yahoo.co'),
 (35, 'DITHUGE', 'THOKWANE', '0722619446', 'dithuge@gmail.com'),
 (36, 'MONAGENG', 'LETHULE', '0732628951', 'revmonageng@gmail.com'),
-(37, 'SIFO', 'LUVUYO', '0823311605', 'sifol@smms.ac.za'),
-(38, 'DIETSISO', 'MOKGETHI', '0835116250', 'mokgethidietsiso@telkom.net');
+(37, 'DIETSISO', 'MOKGETHI', '0835116250', 'mokgethidietsiso@telkom.net');
 
 INSERT IGNORE INTO appointments (person_id, society_id, category_id) VALUES
 (1, 1, 1), (2, 1, 2), (3, 7, 2), (4, 14, 2), (5, 18, 2), (6, 24, 2), (7, 25, 4), (8, 26, 2),
 (9, 27, 2), (10, 30, 2), (11, 33, 2), (12, 35, 2), (13, 36, 2), (14, 38, 2), (15, 39, 2),
 (16, 40, 2), (17, 41, 2), (18, 43, 2), (19, 46, 2), (20, 49, 2), (21, 50, 3), (22, 51, 4),
 (23, 52, 5), (24, 53, 2), (25, 54, 2), (26, 55, 2), (27, 57, 2), (29, 58, 2), (30, 59, 2),
-(31, 60, 2), (32, 61, 2), (33, 62, 2), (34, 63, 2), (35, 64, 2), (36, 65, 2), (37, 66, 2),
-(38, 68, 2);
+(31, 60, 2), (32, 61, 2), (33, 62, 2), (34, 63, 2), (35, 64, 2), (36, 65, 2), (37, 68, 2);
 
 INSERT IGNORE INTO products (product_name, product_title, seller_name, cost_price, selling_price, product_description, category, stock_quantity) VALUES
 ('Love & Loving Tumbler Set', 'Bespoke 4pc Tumbler Set', 'Xpressive Culture', 150.00, 250.00, 'A soft, minimalist aesthetic with clean lettering, designed to inspire and promote a mindful home environment.', 'Glassware', 10),

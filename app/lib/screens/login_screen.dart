@@ -69,7 +69,9 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _isLoading = false);
 
         String message = "Login failed. Please try again.";
-        if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        if (e.code == 'user-not-found' ||
+            e.code == 'wrong-password' ||
+            e.code == 'invalid-credential') {
           message = "Invalid email or password.";
         } else if (e.code == 'invalid-email') {
           message = "Please enter a valid email address.";
@@ -86,7 +88,10 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _isLoading = false);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("An error occurred: $e"), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text("An error occurred: $e"),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       }
@@ -97,7 +102,8 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn(
-        serverClientId: '226294099341-d6n78vt0atgifcgmignq528bvfhq9t0u.apps.googleusercontent.com',
+        serverClientId:
+            '226294099341-d6n78vt0atgifcgmignq528bvfhq9t0u.apps.googleusercontent.com',
       );
 
       // Force sign-out first to ensure account picker dialog pops up and clear stale tokens
@@ -111,8 +117,9 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
       if (googleAuth.idToken == null) {
         throw Exception(
           "Google ID Token is missing. Please ensure your SHA-1 fingerprint is registered in Firebase Console.",
@@ -124,7 +131,9 @@ class _LoginScreenState extends State<LoginScreen> {
         idToken: googleAuth.idToken,
       );
 
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
+      final UserCredential userCredential = await _auth.signInWithCredential(
+        credential,
+      );
       final User? user = userCredential.user;
 
       if (user != null) {
@@ -161,29 +170,41 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Google Sign-In failed: $e"), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text("Google Sign-In failed: $e"),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
   }
 
   Future<void> _forgotPassword() async {
-    final TextEditingController resetEmailController = TextEditingController(text: _emailController.text);
+    final TextEditingController resetEmailController = TextEditingController(
+      text: _emailController.text,
+    );
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Reset Password", style: TextStyle(color: Color(0xFF3B0D11))),
+        title: const Text(
+          "Reset Password",
+          style: TextStyle(color: Color(0xFF3B0D11)),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text("Enter your email address and we'll send you a password reset link."),
+            const Text(
+              "Enter your email address and we'll send you a password reset link.",
+            ),
             const SizedBox(height: 15),
             TextField(
               controller: resetEmailController,
               keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
                 labelText: "Email Address",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ],
@@ -194,12 +215,17 @@ class _LoginScreenState extends State<LoginScreen> {
             child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3B0D11)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3B0D11),
+            ),
             onPressed: () async {
               final email = resetEmailController.text.trim();
               if (email.isEmpty || !email.contains("@")) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Please enter a valid email address"), backgroundColor: Colors.red),
+                  const SnackBar(
+                    content: Text("Please enter a valid email address"),
+                    backgroundColor: Colors.red,
+                  ),
                 );
                 return;
               }
@@ -209,7 +235,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text("Password reset email sent! Check your inbox."),
+                      content: Text(
+                        "Password reset email sent! Check your inbox.",
+                      ),
                       backgroundColor: Colors.green,
                     ),
                   );
@@ -217,7 +245,10 @@ class _LoginScreenState extends State<LoginScreen> {
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Failed to send reset email: $e"), backgroundColor: Colors.red),
+                    SnackBar(
+                      content: Text("Failed to send reset email: $e"),
+                      backgroundColor: Colors.red,
+                    ),
                   );
                 }
               }
@@ -280,7 +311,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
                             labelText: "Email Address",
-                            prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFFFB8B24)),
+                            prefixIcon: const Icon(
+                              Icons.email_outlined,
+                              color: Color(0xFFFB8B24),
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
@@ -303,14 +337,21 @@ class _LoginScreenState extends State<LoginScreen> {
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
                             labelText: "Password",
-                            prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFFFB8B24)),
+                            prefixIcon: const Icon(
+                              Icons.lock_outline,
+                              color: Color(0xFFFB8B24),
+                            ),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                _obscurePassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
                                 color: Colors.grey,
                               ),
                               onPressed: () {
-                                setState(() => _obscurePassword = !_obscurePassword);
+                                setState(
+                                  () => _obscurePassword = !_obscurePassword,
+                                );
                               },
                             ),
                             border: OutlineInputBorder(
@@ -359,7 +400,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      child: const Text("Sign In", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        "Sign In",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
 
@@ -372,8 +419,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     width: double.infinity,
                     child: OutlinedButton.icon(
                       onPressed: _isLoading ? null : _signInWithGoogle,
-                      icon: const Icon(Icons.g_mobiledata, size: 28, color: Color(0xFFFB8B24)),
-                      label: const Text("Continue with Google", style: TextStyle(fontSize: 16, color: Color(0xFFFB8B24))),
+                      icon: const Icon(
+                        Icons.g_mobiledata,
+                        size: 28,
+                        color: Color(0xFFFB8B24),
+                      ),
+                      label: const Text(
+                        "Continue with Google",
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFFFB8B24),
+                        ),
+                      ),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         side: const BorderSide(color: Color(0xFFFB8B24)),
@@ -392,11 +449,16 @@ class _LoginScreenState extends State<LoginScreen> {
                     onTap: () {
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const RegisterScreen(),
+                        ),
                       );
                     },
                     child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                      padding: EdgeInsets.symmetric(
+                        vertical: 8.0,
+                        horizontal: 16.0,
+                      ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -434,10 +496,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      SpinKitFadingCircle(
-                        color: Colors.white,
-                        size: 60.0,
-                      ),
+                      SpinKitFadingCircle(color: Colors.white, size: 60.0),
                       SizedBox(height: 20),
                       Text(
                         "Signing in...",

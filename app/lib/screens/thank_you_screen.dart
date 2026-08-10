@@ -4,9 +4,10 @@ import 'dart:math';
 
 class ThankYouScreen extends StatelessWidget {
   final double amount;
+  final String paymentMethod;
   final String orderNumber;
 
-  ThankYouScreen({super.key, required this.amount}) 
+  ThankYouScreen({super.key, required this.amount, this.paymentMethod = 'Wallet Balance'})
     : orderNumber = 'TNG-${Random().nextInt(900000) + 100000}';
 
   @override
@@ -57,7 +58,7 @@ class ThankYouScreen extends StatelessWidget {
                     const Divider(height: 24),
                     _buildInfoRow('Total Amount', 'R ${amount.toStringAsFixed(2)}'),
                     const Divider(height: 24),
-                    _buildInfoRow('Payment Method', 'Wallet Balance'),
+                    _buildInfoRow('Payment Method', paymentMethod),
                   ],
                 ),
               ),

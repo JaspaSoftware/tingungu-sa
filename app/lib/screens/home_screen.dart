@@ -8,11 +8,17 @@ import 'notices_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
+import 'dart:math' as math;
 import '../utils/avatar_utils.dart';
+import '../utils/notice_utils.dart';
 
 import '../data/scripture_model.dart';
 
 import 'buy_airtime_screen.dart';
+import 'buy_data_screen.dart';
+import 'buy_electricity_screen.dart';
+import 'buy_voucher_screen.dart';
+import 'chat_screen.dart';
 import '../services/scripture_service.dart';
 import 'community_screen.dart';
 import 'events_screen.dart';
@@ -21,7 +27,7 @@ import 'top_up_wallet.dart';
 import 'transactions_screen.dart';
 import 'login_screen.dart';
 import '../services/user_service.dart';
-
+import '../services/presence_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,7 +36,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
   int? _slidingHoverIndex;
   Scripture? dailyScripture;
@@ -50,6 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return 'Good Evening';
     }
   }
+
   StreamSubscription<DocumentSnapshot>? _userSubscription;
 
   bool _isLoadingProfile = true;
@@ -57,13 +64,34 @@ class _HomeScreenState extends State<HomeScreen> {
   double walletBalance = 0.0;
   bool _isLoadingWallet = true;
 
+  late final PageController _tilesPageController;
+  int _currentTileIndex = 0;
 
   @override
   void initState() {
     super.initState();
+    _tilesPageController = PageController(viewportFraction: 0.88);
     _loadUserProfile();
     _loadDailyScripture();
     _loadWalletBalance();
+    WidgetsBinding.instance.addObserver(this);
+    PresenceService.goOnlineForNewSession();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        PresenceService.markAppForeground();
+        break;
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        PresenceService.markAppBackground();
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+        break;
+    }
   }
 
   Future<void> _loadWalletBalance() async {
@@ -75,14 +103,14 @@ class _HomeScreenState extends State<HomeScreen> {
             .doc(user.uid)
             .snapshots()
             .listen((snapshot) {
-          if (snapshot.exists && mounted) {
-            final data = snapshot.data() ?? {};
-            setState(() {
-              walletBalance = (data['wallet_balance'] ?? 0.0).toDouble();
-              _isLoadingWallet = false;
+              if (snapshot.exists && mounted) {
+                final data = snapshot.data() ?? {};
+                setState(() {
+                  walletBalance = (data['wallet_balance'] ?? 0.0).toDouble();
+                  _isLoadingWallet = false;
+                });
+              }
             });
-          }
-        });
       } else {
         if (mounted) {
           setState(() {
@@ -113,7 +141,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-
   bool _profileCompleted = true;
 
   void _loadUserProfile() {
@@ -125,22 +152,25 @@ class _HomeScreenState extends State<HomeScreen> {
             .collection('users')
             .doc(user.uid)
             .snapshots()
-            .listen((snapshot) {
-          if (snapshot.exists && mounted) {
-            final userData = snapshot.data() ?? {};
-            setState(() {
-              userName = userData['displayname'] ?? 'Guest';
-              userAvatar = userData['avatar'] ?? '';
-              _profileCompleted = userData['profile_completed'] ?? false;
-              _isLoadingProfile = false;
-            });
-          } else {
-            if (mounted) setState(() => _isLoadingProfile = false);
-          }
-        }, onError: (e) {
-          if (kDebugMode) print('Error loading profile stream: $e');
-          if (mounted) setState(() => _isLoadingProfile = false);
-        });
+            .listen(
+              (snapshot) {
+                if (snapshot.exists && mounted) {
+                  final userData = snapshot.data() ?? {};
+                  setState(() {
+                    userName = userData['displayname'] ?? 'Guest';
+                    userAvatar = userData['avatar'] ?? '';
+                    _profileCompleted = userData['profile_completed'] ?? false;
+                    _isLoadingProfile = false;
+                  });
+                } else {
+                  if (mounted) setState(() => _isLoadingProfile = false);
+                }
+              },
+              onError: (e) {
+                if (kDebugMode) print('Error loading profile stream: $e');
+                if (mounted) setState(() => _isLoadingProfile = false);
+              },
+            );
       } else {
         if (mounted) setState(() => _isLoadingProfile = false);
       }
@@ -152,6 +182,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _tilesPageController.dispose();
     _userSubscription?.cancel();
     super.dispose();
   }
@@ -159,7 +191,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoadingProfile) {
-
       return Scaffold(
         backgroundColor: const Color(0xFFFAF9F6),
         body: Center(
@@ -172,10 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 16),
               Text(
                 'Loading your profile...',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               ),
             ],
           ),
@@ -212,17 +240,28 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.warning_amber_rounded, color: Color(0xFFFB8B24)),
+                            const Icon(
+                              Icons.warning_amber_rounded,
+                              color: Color(0xFFFB8B24),
+                            ),
                             const SizedBox(width: 12),
                             const Expanded(
                               child: Text(
                                 "Please complete your profile.",
-                                style: TextStyle(color: Color(0xFF3B0D11), fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  color: Color(0xFF3B0D11),
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                             ElevatedButton(
                               onPressed: () {
-                                Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfilePage())).then((_) => _loadUserProfile());
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const ProfilePage(),
+                                  ),
+                                ).then((_) => _loadUserProfile());
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFFFB8B24),
@@ -240,7 +279,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     _buildScriptureCard(),
                     const SizedBox(height: 20),
                     _buildMarketplace(),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 100),
                   ],
                 ),
               ),
@@ -249,6 +288,15 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       bottomNavigationBar: _buildBottomNav(),
+      floatingActionButton: Transform.translate(
+        offset: const Offset(0, 20),
+        child: _LufunoFab(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ChatScreen()),
+          ),
+        ),
+      ),
     );
   }
 
@@ -286,7 +334,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
 
           GestureDetector(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NoticesScreen())),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NoticesScreen()),
+            ),
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
@@ -304,23 +355,42 @@ class _HomeScreenState extends State<HomeScreen> {
                 builder: (context) {
                   final user = FirebaseAuth.instance.currentUser;
                   if (user == null) {
-                    return const Icon(Icons.notifications_outlined, color: Color(0xFFFB8B24));
+                    return const Icon(
+                      Icons.notifications_outlined,
+                      color: Color(0xFFFB8B24),
+                    );
                   }
 
                   return StreamBuilder<DocumentSnapshot>(
-                    stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
+                    stream: FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(user.uid)
+                        .snapshots(),
                     builder: (context, userSnap) {
-                      final userData = userSnap.data?.data() as Map<String, dynamic>? ?? {};
-                      final List<dynamic> readNotices = userData['read_notices'] ?? [];
-                      final Set<String> readIds = readNotices.map((e) => e.toString()).toSet();
+                      final userData =
+                          userSnap.data?.data() as Map<String, dynamic>? ?? {};
+                      final List<dynamic> readNotices =
+                          userData['read_notices'] ?? [];
+                      final Set<String> readIds = readNotices
+                          .map((e) => e.toString())
+                          .toSet();
+                      final userSociety =
+                          (userData['society'] ?? userData['society_name'])
+                              ?.toString();
 
                       return StreamBuilder<QuerySnapshot>(
-                        stream: FirebaseFirestore.instance.collection('notices').snapshots(),
+                        stream: FirebaseFirestore.instance
+                            .collection('notices')
+                            .snapshots(),
                         builder: (context, noticesSnap) {
                           int unreadCount = 0;
                           if (noticesSnap.hasData) {
                             for (var doc in noticesSnap.data!.docs) {
-                              if (!readIds.contains(doc.id)) {
+                              final isVisible = isNoticeVisibleToSociety(
+                                doc.data() as Map<String, dynamic>,
+                                userSociety,
+                              );
+                              if (isVisible && !readIds.contains(doc.id)) {
                                 unreadCount++;
                               }
                             }
@@ -520,24 +590,208 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMarketplace() {
+    final utilityTiles = [
+      {
+        'title': 'Airtime Top-Up',
+        'subtitle': 'Instant recharge for MTN, Vodacom, Cell C & Telkom',
+        'icon': Icons.phone_android_rounded,
+        'color': const Color(0xFFFB8B24),
+        'badge': 'INSTANT',
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const BuyAirtimeScreen()),
+        ),
+      },
+      {
+        'title': 'Data Bundles',
+        'subtitle': 'High-speed internet bundles for all SA networks',
+        'icon': Icons.wifi_rounded,
+        'color': const Color(0xFFE55B13),
+        'badge': 'DATA',
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const BuyDataScreen()),
+        ),
+      },
+      {
+        'title': 'Electricity Tokens',
+        'subtitle': 'Prepaid electricity tokens for Eskom & Municipal meters',
+        'icon': Icons.bolt_rounded,
+        'color': const Color(0xFF2E7D32),
+        'badge': 'PREPAID',
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const BuyElectricityScreen()),
+        ),
+      },
+      {
+        'title': 'Gift & Store Vouchers',
+        'subtitle': 'Digital gift vouchers and retail scratch cards',
+        'icon': Icons.card_giftcard_rounded,
+        'color': const Color(0xFF6A1B9A),
+        'badge': 'VOUCHERS',
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const BuyVoucherScreen()),
+        ),
+      },
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Digital Services',
+          'Digital Utilities',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: Color(0xFF3B0D11),
           ),
         ),
-        const SizedBox(height: 14),
-        _buildMarketplaceTile(
-          icon: Icons.phone_android_outlined,
-          title: 'BUY AIRTIME & UTILITIES',
-          subtitle: 'Buy data, airtime, electricity and digital subscriptions',
-          color: const Color(0xFFFB8B24),
-          onTap: () => _showVASBottomSheet(),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 140,
+          child: PageView.builder(
+            controller: _tilesPageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentTileIndex = index;
+              });
+            },
+            itemCount: utilityTiles.length,
+            itemBuilder: (context, index) {
+              final tile = utilityTiles[index];
+              final isSelected = _currentTileIndex == index;
+              final color = tile['color'] as Color;
+
+              return Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: GestureDetector(
+                  onTap: tile['onTap'] as VoidCallback,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOut,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                      border: Border.all(
+                        color: isSelected
+                            ? color.withValues(alpha: 0.5)
+                            : Colors.grey.shade200,
+                        width: isSelected ? 1.5 : 0.8,
+                      ),
+                    ),
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            tile['icon'] as IconData,
+                            color: color,
+                            size: 26,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      tile['title'] as String,
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF3B0D11),
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: color.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      tile['badge'] as String,
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: color,
+                                        letterSpacing: 0.4,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                tile['subtitle'] as String,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                  height: 1.3,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 20,
+                          color: Colors.grey[400],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(
+            utilityTiles.length,
+            (index) => AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: _currentTileIndex == index ? 20 : 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: _currentTileIndex == index
+                    ? const Color(0xFFFB8B24)
+                    : Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -559,9 +813,9 @@ class _HomeScreenState extends State<HomeScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: color.withValues(alpha: 0.12),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
           border: Border.all(color: Colors.grey.shade200, width: 0.8),
@@ -570,24 +824,13 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Row(
           children: [
             Container(
-              width: 54,
-              height: 54,
+              width: 50,
+              height: 50,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [color, color.withValues(alpha: 0.8)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.3),
-                    blurRadius: 6,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: Colors.white, size: 26),
+              child: Icon(icon, color: color, size: 26),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -614,24 +857,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFAF9F6),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.chevron_right_rounded,
-                size: 22,
-                color: Color(0xFF3B0D11),
-              ),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: Colors.grey[400],
             ),
           ],
         ),
       ),
     );
   }
+
   Widget _buildDrawer() {
     final topPadding = MediaQuery.of(context).padding.top;
     return Drawer(
@@ -663,7 +899,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   child: CircleAvatar(
                     key: ValueKey(userAvatar),
-                    backgroundImage: AvatarUtils.getAvatarImageProviderOrDefault(userAvatar),
+                    backgroundImage:
+                        AvatarUtils.getAvatarImageProviderOrDefault(userAvatar),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -705,211 +942,282 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 // Main App Navigation Section
                 _buildDrawerSectionHeader('NAVIGATION'),
-          _drawerItem(
-            'Home',
-            Icons.home_outlined,
-            onTap: () {
-              Navigator.pop(context);
-              setState(() => _currentIndex = 0);
-            },
-            isActive: _currentIndex == 0,
-          ),
-          _drawerItem(
-            'Community',
-            Icons.people_outline,
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const CommunityScreen()),
-              );
-            },
-          ),
-          _drawerItem(
-            'Tingungu TV & Media',
-            Icons.video_library_outlined,
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const MediaScreen()),
-              );
-            },
-          ),
-          _drawerItem(
-            'Events & Calendar',
-            Icons.event_outlined,
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const EventsScreen()),
-              );
-            },
-          ),
-
-          const Divider(height: 24),
-          _buildDrawerSectionHeader('SERVICES & GIVING'),
-          _drawerItem(
-            'Give & Pledges',
-            Icons.favorite_outline,
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const GivingPage()),
-              );
-            },
-          ),
-          _drawerItem(
-            'Buy Airtime & Utilities',
-            Icons.phone_android_outlined,
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const BuyAirtimeScreen()),
-              );
-            },
-          ),
-          _drawerItem(
-            'Top Up Wallet',
-            Icons.account_balance_wallet_outlined,
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const TopUpWalletScreen()),
-              );
-            },
-          ),
-
-          const Divider(height: 24),
-          _buildDrawerSectionHeader('ACCOUNT'),
-          _drawerItem(
-            'Edit Profile',
-            Icons.person_outline,
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ProfilePage()),
-              );
-            },
-          ),
-          _drawerItem(
-            'Transaction History',
-            Icons.history,
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const TransactionsScreen()),
-              );
-            },
-          ),
-          _drawerItem(
-            'About Tingungu',
-            Icons.info_outline,
-            onTap: () {
-              Navigator.pop(context);
-              launchUrl(
-                Uri.parse('https://www.tingungu.co.za/index.html'),
-                mode: LaunchMode.externalApplication,
-              );
-            },
-          ),
-
-          const Divider(height: 24),
-          ExpansionTile(
-            leading: const Icon(Icons.build_circle_outlined, color: Color(0xFFFB8B24)),
-            title: const Text(
-              'Developer & Seed Tools',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF3B0D11)),
-            ),
-            children: [
-              ListTile(
-                dense: true,
-                leading: const Icon(Icons.refresh, size: 18, color: Color(0xFFFB8B24)),
-                title: const Text('Seed Giving Options', style: TextStyle(fontSize: 13)),
-                onTap: () { Navigator.pop(context); _seedGivingOptions(); },
-              ),
-              ListTile(
-                dense: true,
-                leading: const Icon(Icons.refresh, size: 18, color: Color(0xFFFB8B24)),
-                title: const Text('Seed Notices', style: TextStyle(fontSize: 13)),
-                onTap: () { Navigator.pop(context); _seedNotices(); },
-              ),
-              ListTile(
-                dense: true,
-                leading: const Icon(Icons.refresh, size: 18, color: Color(0xFFFB8B24)),
-                title: const Text('Seed Media Data', style: TextStyle(fontSize: 13)),
-                onTap: () { Navigator.pop(context); _seedMediaData(); },
-              ),
-              ListTile(
-                dense: true,
-                leading: const Icon(Icons.refresh, size: 18, color: Color(0xFFFB8B24)),
-                title: const Text('Seed Events Data', style: TextStyle(fontSize: 13)),
-                onTap: () { Navigator.pop(context); _seedEventsData(); },
-              ),
-              ListTile(
-                dense: true,
-                leading: const Icon(Icons.refresh, size: 18, color: Color(0xFFFB8B24)),
-                title: const Text('Seed Societies Data', style: TextStyle(fontSize: 13)),
-                onTap: () { Navigator.pop(context); _seedSocietiesData(); },
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Column(
-              children: [
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      await UserService.signOutUser();
-                      await FirebaseAuth.instance.signOut();
-                      final prefs = await SharedPreferences.getInstance();
-                      await prefs.remove('user_profile');
-                      if (mounted) {
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(builder: (_) => const LoginScreen()),
-                          (route) => false,
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.logout, size: 18),
-                    label: const Text('Logout'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFB8B24),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                _drawerItem(
+                  'Home',
+                  Icons.home_outlined,
+                  onTap: () {
+                    Navigator.pop(context);
+                    setState(() => _currentIndex = 0);
+                  },
+                  isActive: _currentIndex == 0,
+                ),
+                _drawerItem(
+                  'Community',
+                  Icons.people_outline,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const CommunityScreen(),
                       ),
+                    );
+                  },
+                ),
+                _drawerItem(
+                  'Tingungu TV & Media',
+                  Icons.video_library_outlined,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MediaScreen()),
+                    );
+                  },
+                ),
+                _drawerItem(
+                  'Events & Calendar',
+                  Icons.event_outlined,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const EventsScreen()),
+                    );
+                  },
+                ),
+
+                const Divider(height: 24),
+                _buildDrawerSectionHeader('SERVICES & GIVING'),
+                _drawerItem(
+                  'Give & Pledges',
+                  Icons.favorite_outline,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const GivingPage()),
+                    );
+                  },
+                ),
+                _drawerItem(
+                  'Buy Airtime & Utilities',
+                  Icons.phone_android_outlined,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const BuyAirtimeScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _drawerItem(
+                  'Top Up Wallet',
+                  Icons.account_balance_wallet_outlined,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const TopUpWalletScreen(),
+                      ),
+                    );
+                  },
+                ),
+
+                const Divider(height: 24),
+                _buildDrawerSectionHeader('ACCOUNT'),
+                _drawerItem(
+                  'Edit Profile',
+                  Icons.person_outline,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ProfilePage()),
+                    );
+                  },
+                ),
+                _drawerItem(
+                  'Transaction History',
+                  Icons.history,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const TransactionsScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _drawerItem(
+                  'About Tingungu',
+                  Icons.info_outline,
+                  onTap: () {
+                    Navigator.pop(context);
+                    launchUrl(
+                      Uri.parse('https://www.tingungu.co.za/index.html'),
+                      mode: LaunchMode.externalApplication,
+                    );
+                  },
+                ),
+
+                const Divider(height: 24),
+                ExpansionTile(
+                  leading: const Icon(
+                    Icons.build_circle_outlined,
+                    color: Color(0xFFFB8B24),
+                  ),
+                  title: const Text(
+                    'Developer & Seed Tools',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF3B0D11),
                     ),
                   ),
+                  children: [
+                    ListTile(
+                      dense: true,
+                      leading: const Icon(
+                        Icons.refresh,
+                        size: 18,
+                        color: Color(0xFFFB8B24),
+                      ),
+                      title: const Text(
+                        'Seed Giving Options',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _seedGivingOptions();
+                      },
+                    ),
+                    ListTile(
+                      dense: true,
+                      leading: const Icon(
+                        Icons.refresh,
+                        size: 18,
+                        color: Color(0xFFFB8B24),
+                      ),
+                      title: const Text(
+                        'Seed Notices',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _seedNotices();
+                      },
+                    ),
+                    ListTile(
+                      dense: true,
+                      leading: const Icon(
+                        Icons.refresh,
+                        size: 18,
+                        color: Color(0xFFFB8B24),
+                      ),
+                      title: const Text(
+                        'Seed Media Data',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _seedMediaData();
+                      },
+                    ),
+                    ListTile(
+                      dense: true,
+                      leading: const Icon(
+                        Icons.refresh,
+                        size: 18,
+                        color: Color(0xFFFB8B24),
+                      ),
+                      title: const Text(
+                        'Seed Events Data',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _seedEventsData();
+                      },
+                    ),
+                    ListTile(
+                      dense: true,
+                      leading: const Icon(
+                        Icons.refresh,
+                        size: 18,
+                        color: Color(0xFFFB8B24),
+                      ),
+                      title: const Text(
+                        'Seed Societies Data',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _seedSocietiesData();
+                      },
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                const Text(
-                  'v1.0.0 • Developer: Jaspa Software',
-                  style: TextStyle(color: Colors.grey, fontSize: 11),
+
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Column(
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            await PresenceService.goOffline();
+                            await UserService.signOutUser();
+                            await FirebaseAuth.instance.signOut();
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.remove('user_profile');
+                            if (mounted) {
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const LoginScreen(),
+                                ),
+                                (route) => false,
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.logout, size: 18),
+                          label: const Text('Logout'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFB8B24),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'v1.0.0 • Developer: Jaspa Software',
+                        style: TextStyle(color: Colors.grey, fontSize: 11),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(height: 16),
               ],
             ),
           ),
-          const SizedBox(height: 16),
         ],
       ),
-    ),
-  ],
-),
-);
-}
+    );
+  }
 
   Widget _buildDrawerSectionHeader(String title) {
     return Padding(
@@ -1020,15 +1328,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: const Icon(Icons.add_circle_outline, size: 16),
                 label: const Text(
                   'TOP UP',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFB8B24),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -1079,23 +1387,17 @@ class _HomeScreenState extends State<HomeScreen> {
     if (index == 1) {
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => const CommunityScreen(),
-        ),
+        MaterialPageRoute(builder: (context) => const CommunityScreen()),
       );
     } else if (index == 2) {
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => const MediaScreen(),
-        ),
+        MaterialPageRoute(builder: (context) => const MediaScreen()),
       );
     } else if (index == 3) {
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => const EventsScreen(),
-        ),
+        MaterialPageRoute(builder: (context) => const EventsScreen()),
       );
     } else {
       setState(() => _currentIndex = index);
@@ -1150,8 +1452,9 @@ class _HomeScreenState extends State<HomeScreen> {
               final RenderBox? box = context.findRenderObject() as RenderBox?;
               if (box != null) {
                 final localPos = box.globalToLocal(globalPosition);
-                final calculatedIndex =
-                    (localPos.dx / widthPerTab).floor().clamp(0, navItems.length - 1);
+                final calculatedIndex = (localPos.dx / widthPerTab)
+                    .floor()
+                    .clamp(0, navItems.length - 1);
                 if (_slidingHoverIndex != calculatedIndex) {
                   setState(() {
                     _slidingHoverIndex = calculatedIndex;
@@ -1171,8 +1474,10 @@ class _HomeScreenState extends State<HomeScreen> {
             }
 
             return GestureDetector(
-              onPanStart: (details) => updateSlidingHover(details.globalPosition),
-              onPanUpdate: (details) => updateSlidingHover(details.globalPosition),
+              onPanStart: (details) =>
+                  updateSlidingHover(details.globalPosition),
+              onPanUpdate: (details) =>
+                  updateSlidingHover(details.globalPosition),
               onPanEnd: (_) => commitTabSelection(),
               onPanCancel: () {
                 setState(() {
@@ -1201,14 +1506,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? const Color(0xFFFB8B24)
-                                  .withValues(alpha: isHovered ? 0.25 : 0.15)
+                              ? const Color(
+                                  0xFFFB8B24,
+                                ).withValues(alpha: isHovered ? 0.25 : 0.15)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: isHovered
                               ? [
                                   BoxShadow(
-                                    color: const Color(0xFFFB8B24).withValues(alpha: 0.2),
+                                    color: const Color(
+                                      0xFFFB8B24,
+                                    ).withValues(alpha: 0.2),
                                     blurRadius: 8,
                                     offset: const Offset(0, 2),
                                   ),
@@ -1219,7 +1527,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             AnimatedScale(
-                              scale: isSelected ? (isHovered ? 1.25 : 1.15) : 1.0,
+                              scale: isSelected
+                                  ? (isHovered ? 1.25 : 1.15)
+                                  : 1.0,
                               duration: const Duration(milliseconds: 180),
                               child: Icon(
                                 isSelected
@@ -1227,7 +1537,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                     : (item['icon'] as IconData),
                                 color: isSelected
                                     ? const Color(0xFFFB8B24)
-                                    : const Color(0xFF3B0D11).withValues(alpha: 0.5),
+                                    : const Color(
+                                        0xFF3B0D11,
+                                      ).withValues(alpha: 0.5),
                                 size: 24,
                               ),
                             ),
@@ -1259,45 +1571,52 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-
   Future<void> _seedMediaData() async {
-    showDialog(context: context, builder: (_) => const Center(child: CircularProgressIndicator()));
+    showDialog(
+      context: context,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
     final batch = FirebaseFirestore.instance.batch();
     final videos = [
       {
         "title": "Sunday Morning Live Service",
         "url": "https://www.youtube.com/live/rlx4qHn9wkY",
         "thumbnail": "https://img.youtube.com/vi/rlx4qHn9wkY/0.jpg",
-        "description": "Join our weekly Sunday service live stream for a powerful word and worship.",
-        "createdAt": FieldValue.serverTimestamp()
+        "description":
+            "Join our weekly Sunday service live stream for a powerful word and worship.",
+        "createdAt": FieldValue.serverTimestamp(),
       },
       {
         "title": "Worship & Praise Session",
         "url": "https://www.youtube.com/live/NTTN8Ie15AY",
         "thumbnail": "https://img.youtube.com/vi/NTTN8Ie15AY/0.jpg",
-        "description": "An uplifting session of praise and worship with the Tingungu choir.",
-        "createdAt": FieldValue.serverTimestamp()
+        "description":
+            "An uplifting session of praise and worship with the Tingungu choir.",
+        "createdAt": FieldValue.serverTimestamp(),
       },
       {
         "title": "Midweek Fellowship Live",
         "url": "https://www.youtube.com/live/WhiwV1sp1aY",
         "thumbnail": "https://img.youtube.com/vi/WhiwV1sp1aY/0.jpg",
-        "description": "Connecting mid-week for spiritual encouragement and community prayer.",
-        "createdAt": FieldValue.serverTimestamp()
+        "description":
+            "Connecting mid-week for spiritual encouragement and community prayer.",
+        "createdAt": FieldValue.serverTimestamp(),
       },
       {
         "title": "Tingungu TV: Youth Ministry",
         "url": "https://www.youtube.com/live/n2BMTvSIXkU",
         "thumbnail": "https://img.youtube.com/vi/n2BMTvSIXkU/0.jpg",
-        "description": "Engaging our youth with relevant messages and dynamic worship.",
-        "createdAt": FieldValue.serverTimestamp()
+        "description":
+            "Engaging our youth with relevant messages and dynamic worship.",
+        "createdAt": FieldValue.serverTimestamp(),
       },
       {
         "title": "Evening Prayer with Pastor",
         "url": "https://www.youtube.com/live/-2jsw9JKhEQ",
         "thumbnail": "https://img.youtube.com/vi/-2jsw9JKhEQ/0.jpg",
-        "description": "Closing the day with prayer and a short reflection from our leadership.",
-        "createdAt": FieldValue.serverTimestamp()
+        "description":
+            "Closing the day with prayer and a short reflection from our leadership.",
+        "createdAt": FieldValue.serverTimestamp(),
       },
     ];
     for (var v in videos) {
@@ -1307,17 +1626,35 @@ class _HomeScreenState extends State<HomeScreen> {
     await batch.commit();
     if (mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Seeded 5 videos!')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Seeded 5 videos!')));
     }
   }
 
   Future<void> _seedNotices() async {
-    showDialog(context: context, builder: (_) => const Center(child: CircularProgressIndicator()));
+    showDialog(
+      context: context,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
     final batch = FirebaseFirestore.instance.batch();
     final notices = [
-      {"title": "Sunday Service", "message": "Join us this Sunday at 9 AM for a special worship service.", "createdAt": FieldValue.serverTimestamp()},
-      {"title": "Youth Meeting", "message": "Youth meeting will take place on Saturday at 2 PM.", "createdAt": FieldValue.serverTimestamp()},
-      {"title": "Church Renovations", "message": "The church building project is starting next week. Thank you for your pledges!", "createdAt": FieldValue.serverTimestamp()},
+      {
+        "title": "Sunday Service",
+        "message": "Join us this Sunday at 9 AM for a special worship service.",
+        "createdAt": FieldValue.serverTimestamp(),
+      },
+      {
+        "title": "Youth Meeting",
+        "message": "Youth meeting will take place on Saturday at 2 PM.",
+        "createdAt": FieldValue.serverTimestamp(),
+      },
+      {
+        "title": "Church Renovations",
+        "message":
+            "The church building project is starting next week. Thank you for your pledges!",
+        "createdAt": FieldValue.serverTimestamp(),
+      },
     ];
     for (var n in notices) {
       final docRef = FirebaseFirestore.instance.collection('notices').doc();
@@ -1326,12 +1663,17 @@ class _HomeScreenState extends State<HomeScreen> {
     await batch.commit();
     if (mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Seeded 3 notices!')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Seeded 3 notices!')));
     }
   }
 
   Future<void> _seedGivingOptions() async {
-    showDialog(context: context, builder: (_) => const Center(child: CircularProgressIndicator()));
+    showDialog(
+      context: context,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
     final options = [
       {"name": "Tithes"},
       {"name": "Pledge for Church Building"},
@@ -1340,237 +1682,717 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
     final batch = FirebaseFirestore.instance.batch();
     for (var opt in options) {
-      final docRef = FirebaseFirestore.instance.collection('giving_options').doc();
+      final docRef = FirebaseFirestore.instance
+          .collection('giving_options')
+          .doc();
       batch.set(docRef, opt);
     }
     await batch.commit();
     if (mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Seeded 4 giving options!')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Seeded 4 giving options!')));
     }
   }
 
-
-
   Future<void> _seedEventsData() async {
-    showDialog(context: context, builder: (_) => const Center(child: CircularProgressIndicator()));
+    showDialog(
+      context: context,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
     final events = [
-      {"month": "January", "date_start": "1", "date_end": null, "description": "New Year's Day", "venue": null},
-      {"month": "January", "date_start": "1", "date_end": "28", "description": "Feb Connexional Children & Youth Back to School Campaign", "venue": "All Districts"},
-      {"month": "January", "date_start": "7", "date_end": null, "description": "MCO Opens", "venue": null},
-      {"month": "January", "date_start": "11", "date_end": null, "description": "Induction of Rev David Gertze by the Vice Chair", "venue": "Magalies Circuit"},
-      {"month": "January", "date_start": "11", "date_end": null, "description": "Induction of Rev Moeletsi Sebolai and Thuso Manamela by the Bishop", "venue": "Ga Rankuwa"},
-      {"month": "January", "date_start": "12", "date_end": "13", "description": "EMMU General Committee", "venue": "eMseni"},
-      {"month": "January", "date_start": "12", "date_end": "13", "description": "Bishops Orientation", "venue": null},
-      {"month": "January", "date_start": "13", "date_end": null, "description": "Limpopo District Trust Property", "venue": "Virtual"},
-      {"month": "January", "date_start": "14", "date_end": null, "description": "Limpopo District EMMU Meeting", "venue": "Virtual"},
-      {"month": "January", "date_start": "14", "date_end": "16", "description": "Bishops' Retreat", "venue": "TBC"},
-      {"month": "January", "date_start": "15", "date_end": null, "description": "Limpopo District Finance Committee", "venue": "Virtual"},
-      {"month": "January", "date_start": "16", "date_end": "18", "description": "Lay President & District Lay Leaders' Consultation", "venue": "Namibia District"},
-      {"month": "January", "date_start": "17", "date_end": null, "description": "Connexional Women's Fellowship Spiritual opening Retreat", "venue": "NFSL District"},
-      {"month": "January", "date_start": "18", "date_end": null, "description": "Induction of Rev Mosiga Seekoei by the Bishop", "venue": "Mbombela"},
-      {"month": "January", "date_start": "19", "date_end": "23", "description": "Probationer Seminar", "venue": "eMseni"},
-      {"month": "January", "date_start": "19", "date_end": "23", "description": "Order of Evangelism Probationer Seminar", "venue": "eMseni"},
-      {"month": "January", "date_start": "20", "date_end": null, "description": "Synergizing the Orders", "venue": "Virtual"},
-      {"month": "January", "date_start": "23", "date_end": null, "description": "Methodist Joint Removals (MJR) Meeting", "venue": "MCO"},
-      {"month": "January", "date_start": "23", "date_end": "25", "description": "Connexional Women's Fellowship Executive Committee Meeting", "venue": "Lumko Retreat Centre"},
-      {"month": "January", "date_start": "24", "date_end": null, "description": "Limpopo District Wesley Guild GEC", "venue": "Virtual"},
-      {"month": "January", "date_start": "25", "date_end": null, "description": "Induction of Rev Elisha Moeketsi by the Bishop", "venue": "Mabieskraal"},
-      {"month": "January", "date_start": "25", "date_end": null, "description": "Induction of Rev Gavin Felix by the Vice Chair", "venue": "Middleburg"},
-      {"month": "January", "date_start": "25", "date_end": null, "description": "Seth Mokitimi Methodist Seminary Opening Service", "venue": "SMMS"},
-      {"month": "January", "date_start": "27", "date_end": null, "description": "Limpopo District Management", "venue": "Virtual"},
-      {"month": "January", "date_start": "27", "date_end": "29", "description": "Molopo District Boundaries Conversation: 27th Francistown, 28th Gaborone, 29th Mahikeng", "venue": "Molopo District"},
-      {"month": "January", "date_start": "28", "date_end": null, "description": "Church Unity Commission Executive", "venue": "Virtual"},
-      {"month": "January", "date_start": "29", "date_end": null, "description": "Connexional Men's League District Presidents Meeting", "venue": "Virtual"},
-      {"month": "January", "date_start": "31", "date_end": null, "description": "Connexional Children and Youth Executive Meeting", "venue": "Virtual"},
-      {"month": "February", "date_start": "3", "date_end": null, "description": "Connexional Unit Leaders' Meeting", "venue": "MCO"},
-      {"month": "February", "date_start": "3", "date_end": "4", "description": "DEWCOM Meeting", "venue": "eMseni"},
-      {"month": "February", "date_start": "5", "date_end": null, "description": "Local Preachers' Department District Secretaries Consultation", "venue": "Virtual"},
-      {"month": "February", "date_start": "5", "date_end": null, "description": "MCSA Church Funds Investment & Advisory Committee", "venue": "TBA"},
-      {"month": "February", "date_start": "5", "date_end": null, "description": "Communications Board Meeting", "venue": "MCO"},
-      {"month": "February", "date_start": "6", "date_end": "8", "description": "Connexional Children and Youth Children's Ministry Indaba", "venue": "Lesotho"},
-      {"month": "February", "date_start": "7", "date_end": null, "description": "Boundaries Sub-Committee: Molopo Conversations", "venue": "Rustenburg"},
-      {"month": "February", "date_start": "7", "date_end": null, "description": "Limpopo District Women's Fellowship Extended Leaders Capacity Building Workshop", "venue": "Coalfields"},
-      {"month": "February", "date_start": "8", "date_end": null, "description": "Induction of Revs Petrus Madumo and Monare", "venue": "Coalfields"},
-      {"month": "February", "date_start": "8", "date_end": null, "description": "Induction of Revs Nomvula and Zamuxolo Botha by the Vice Chair", "venue": "Pretoria Central"},
-      {"month": "February", "date_start": "9", "date_end": "13", "description": "Ordinands' Seminar", "venue": "Lumko Retreat Centre"},
-      {"month": "February", "date_start": "10", "date_end": null, "description": "Connexional Audit Committee Meeting", "venue": null},
-      {"month": "February", "date_start": "10", "date_end": null, "description": "Limpopo Circuit Steward's Consultative Workshop", "venue": "Virtual"},
-      {"month": "February", "date_start": "10", "date_end": null, "description": "Mission Unit Advisory Board Meeting", "venue": "MCO"},
-      {"month": "February", "date_start": "10", "date_end": null, "description": "MJR Coordinators' Workshop", "venue": "TBA"},
-      {"month": "February", "date_start": "10", "date_end": "12", "description": "Limpopo District Minister's retreat", "venue": "TBA"},
-      {"month": "February", "date_start": "11", "date_end": null, "description": "Ecumenical Affairs Advisory Board", "venue": "MCO"},
-      {"month": "February", "date_start": "12", "date_end": null, "description": "Lay Training Advisory Panel Consultation", "venue": "Virtual"},
-      {"month": "February", "date_start": "12", "date_end": null, "description": "Connexional Trust Property Committee", "venue": "Virtual"},
-      {"month": "February", "date_start": "12", "date_end": "14", "description": "Young Men's Guild Connexional General Executive Committee Meeting", "venue": "Natal Coastal District"},
-      {"month": "February", "date_start": "13", "date_end": "16", "description": "Women's Manyano Connexional Extended Executive Meeting", "venue": "NFSL District"},
-      {"month": "February", "date_start": "13", "date_end": null, "description": "Wesley Guild Connexional General Executive Meeting", "venue": "Virtual"},
-      {"month": "February", "date_start": "15", "date_end": null, "description": "Induction of Rev Sethunya Motlhodi by the Bishop", "venue": "Mphahlele"},
-      {"month": "February", "date_start": "18", "date_end": null, "description": "Ash Wednesday", "venue": null},
-      {"month": "February", "date_start": "19", "date_end": "20", "description": "Connexional Heritage Standing Committee", "venue": "TBC"},
-      {"month": "February", "date_start": "19", "date_end": "21", "description": "Local Preachers Association General Committee Meeting", "venue": "Highveld & eSwatini District"},
-      {"month": "February", "date_start": "20", "date_end": "22", "description": "Limpopo District Children Ministry Indaba & MCYU Opening Service (Sunday)", "venue": "Hoffenhein Lodge"},
-      {"month": "February", "date_start": "22", "date_end": null, "description": "Induction of Rev Tshepo Nkosi by the Bishop", "venue": "Moreleta"},
-      {"month": "February", "date_start": "24", "date_end": null, "description": "Medical Aid Committee", "venue": "MCO"},
-      {"month": "February", "date_start": "24", "date_end": "25", "description": "Order of Evangelism Coordinators Consultation", "venue": "Emseni"},
-      {"month": "February", "date_start": "26", "date_end": null, "description": "Finance Unit Investment and Advisory", "venue": "Virtual"},
-      {"month": "February", "date_start": "26", "date_end": "March 1", "description": "Connexional Women's Fellowship General Executive Committee Meeting", "venue": "Central District [Maranatha]"},
-      {"month": "February", "date_start": "27", "date_end": null, "description": "Connexional MethSSoc Executive Assembly", "venue": "Virtual"},
-      {"month": "February", "date_start": "27", "date_end": "March 1", "description": "Limpopo Minister's Wives retreat", "venue": "TBA"},
-      {"month": "February", "date_start": "27", "date_end": "March 1", "description": "Limpopo District Music Association Annual Convention", "venue": "Mabopane"},
-      {"month": "February", "date_start": "28", "date_end": null, "description": "Limpopo District Young Women's Manyano DEC", "venue": "Seshego"},
-      {"month": "February", "date_start": "28", "date_end": "March 1", "description": "Limpopo District YAM Strategic session & YAM Mhluzi Circuit Launch", "venue": "Mhluzi Circuit"},
+      {
+        "month": "January",
+        "date_start": "1",
+        "date_end": null,
+        "description": "New Year's Day",
+        "venue": null,
+      },
+      {
+        "month": "January",
+        "date_start": "1",
+        "date_end": "28",
+        "description":
+            "Feb Connexional Children & Youth Back to School Campaign",
+        "venue": "All Districts",
+      },
+      {
+        "month": "January",
+        "date_start": "7",
+        "date_end": null,
+        "description": "MCO Opens",
+        "venue": null,
+      },
+      {
+        "month": "January",
+        "date_start": "11",
+        "date_end": null,
+        "description": "Induction of Rev David Gertze by the Vice Chair",
+        "venue": "Magalies Circuit",
+      },
+      {
+        "month": "January",
+        "date_start": "11",
+        "date_end": null,
+        "description":
+            "Induction of Rev Moeletsi Sebolai and Thuso Manamela by the Bishop",
+        "venue": "Ga Rankuwa",
+      },
+      {
+        "month": "January",
+        "date_start": "12",
+        "date_end": "13",
+        "description": "EMMU General Committee",
+        "venue": "eMseni",
+      },
+      {
+        "month": "January",
+        "date_start": "12",
+        "date_end": "13",
+        "description": "Bishops Orientation",
+        "venue": null,
+      },
+      {
+        "month": "January",
+        "date_start": "13",
+        "date_end": null,
+        "description": "Limpopo District Trust Property",
+        "venue": "Virtual",
+      },
+      {
+        "month": "January",
+        "date_start": "14",
+        "date_end": null,
+        "description": "Limpopo District EMMU Meeting",
+        "venue": "Virtual",
+      },
+      {
+        "month": "January",
+        "date_start": "14",
+        "date_end": "16",
+        "description": "Bishops' Retreat",
+        "venue": "TBC",
+      },
+      {
+        "month": "January",
+        "date_start": "15",
+        "date_end": null,
+        "description": "Limpopo District Finance Committee",
+        "venue": "Virtual",
+      },
+      {
+        "month": "January",
+        "date_start": "16",
+        "date_end": "18",
+        "description": "Lay President & District Lay Leaders' Consultation",
+        "venue": "Namibia District",
+      },
+      {
+        "month": "January",
+        "date_start": "17",
+        "date_end": null,
+        "description":
+            "Connexional Women's Fellowship Spiritual opening Retreat",
+        "venue": "NFSL District",
+      },
+      {
+        "month": "January",
+        "date_start": "18",
+        "date_end": null,
+        "description": "Induction of Rev Mosiga Seekoei by the Bishop",
+        "venue": "Mbombela",
+      },
+      {
+        "month": "January",
+        "date_start": "19",
+        "date_end": "23",
+        "description": "Probationer Seminar",
+        "venue": "eMseni",
+      },
+      {
+        "month": "January",
+        "date_start": "19",
+        "date_end": "23",
+        "description": "Order of Evangelism Probationer Seminar",
+        "venue": "eMseni",
+      },
+      {
+        "month": "January",
+        "date_start": "20",
+        "date_end": null,
+        "description": "Synergizing the Orders",
+        "venue": "Virtual",
+      },
+      {
+        "month": "January",
+        "date_start": "23",
+        "date_end": null,
+        "description": "Methodist Joint Removals (MJR) Meeting",
+        "venue": "MCO",
+      },
+      {
+        "month": "January",
+        "date_start": "23",
+        "date_end": "25",
+        "description":
+            "Connexional Women's Fellowship Executive Committee Meeting",
+        "venue": "Lumko Retreat Centre",
+      },
+      {
+        "month": "January",
+        "date_start": "24",
+        "date_end": null,
+        "description": "Limpopo District Wesley Guild GEC",
+        "venue": "Virtual",
+      },
+      {
+        "month": "January",
+        "date_start": "25",
+        "date_end": null,
+        "description": "Induction of Rev Elisha Moeketsi by the Bishop",
+        "venue": "Mabieskraal",
+      },
+      {
+        "month": "January",
+        "date_start": "25",
+        "date_end": null,
+        "description": "Induction of Rev Gavin Felix by the Vice Chair",
+        "venue": "Middleburg",
+      },
+      {
+        "month": "January",
+        "date_start": "25",
+        "date_end": null,
+        "description": "Seth Mokitimi Methodist Seminary Opening Service",
+        "venue": "SMMS",
+      },
+      {
+        "month": "January",
+        "date_start": "27",
+        "date_end": null,
+        "description": "Limpopo District Management",
+        "venue": "Virtual",
+      },
+      {
+        "month": "January",
+        "date_start": "27",
+        "date_end": "29",
+        "description":
+            "Molopo District Boundaries Conversation: 27th Francistown, 28th Gaborone, 29th Mahikeng",
+        "venue": "Molopo District",
+      },
+      {
+        "month": "January",
+        "date_start": "28",
+        "date_end": null,
+        "description": "Church Unity Commission Executive",
+        "venue": "Virtual",
+      },
+      {
+        "month": "January",
+        "date_start": "29",
+        "date_end": null,
+        "description": "Connexional Men's League District Presidents Meeting",
+        "venue": "Virtual",
+      },
+      {
+        "month": "January",
+        "date_start": "31",
+        "date_end": null,
+        "description": "Connexional Children and Youth Executive Meeting",
+        "venue": "Virtual",
+      },
+      {
+        "month": "February",
+        "date_start": "3",
+        "date_end": null,
+        "description": "Connexional Unit Leaders' Meeting",
+        "venue": "MCO",
+      },
+      {
+        "month": "February",
+        "date_start": "3",
+        "date_end": "4",
+        "description": "DEWCOM Meeting",
+        "venue": "eMseni",
+      },
+      {
+        "month": "February",
+        "date_start": "5",
+        "date_end": null,
+        "description":
+            "Local Preachers' Department District Secretaries Consultation",
+        "venue": "Virtual",
+      },
+      {
+        "month": "February",
+        "date_start": "5",
+        "date_end": null,
+        "description": "MCSA Church Funds Investment & Advisory Committee",
+        "venue": "TBA",
+      },
+      {
+        "month": "February",
+        "date_start": "5",
+        "date_end": null,
+        "description": "Communications Board Meeting",
+        "venue": "MCO",
+      },
+      {
+        "month": "February",
+        "date_start": "6",
+        "date_end": "8",
+        "description":
+            "Connexional Children and Youth Children's Ministry Indaba",
+        "venue": "Lesotho",
+      },
+      {
+        "month": "February",
+        "date_start": "7",
+        "date_end": null,
+        "description": "Boundaries Sub-Committee: Molopo Conversations",
+        "venue": "Rustenburg",
+      },
+      {
+        "month": "February",
+        "date_start": "7",
+        "date_end": null,
+        "description":
+            "Limpopo District Women's Fellowship Extended Leaders Capacity Building Workshop",
+        "venue": "Coalfields",
+      },
+      {
+        "month": "February",
+        "date_start": "8",
+        "date_end": null,
+        "description": "Induction of Revs Petrus Madumo and Monare",
+        "venue": "Coalfields",
+      },
+      {
+        "month": "February",
+        "date_start": "8",
+        "date_end": null,
+        "description":
+            "Induction of Revs Nomvula and Zamuxolo Botha by the Vice Chair",
+        "venue": "Pretoria Central",
+      },
+      {
+        "month": "February",
+        "date_start": "9",
+        "date_end": "13",
+        "description": "Ordinands' Seminar",
+        "venue": "Lumko Retreat Centre",
+      },
+      {
+        "month": "February",
+        "date_start": "10",
+        "date_end": null,
+        "description": "Connexional Audit Committee Meeting",
+        "venue": null,
+      },
+      {
+        "month": "February",
+        "date_start": "10",
+        "date_end": null,
+        "description": "Limpopo Circuit Steward's Consultative Workshop",
+        "venue": "Virtual",
+      },
+      {
+        "month": "February",
+        "date_start": "10",
+        "date_end": null,
+        "description": "Mission Unit Advisory Board Meeting",
+        "venue": "MCO",
+      },
+      {
+        "month": "February",
+        "date_start": "10",
+        "date_end": null,
+        "description": "MJR Coordinators' Workshop",
+        "venue": "TBA",
+      },
+      {
+        "month": "February",
+        "date_start": "10",
+        "date_end": "12",
+        "description": "Limpopo District Minister's retreat",
+        "venue": "TBA",
+      },
+      {
+        "month": "February",
+        "date_start": "11",
+        "date_end": null,
+        "description": "Ecumenical Affairs Advisory Board",
+        "venue": "MCO",
+      },
+      {
+        "month": "February",
+        "date_start": "12",
+        "date_end": null,
+        "description": "Lay Training Advisory Panel Consultation",
+        "venue": "Virtual",
+      },
+      {
+        "month": "February",
+        "date_start": "12",
+        "date_end": null,
+        "description": "Connexional Trust Property Committee",
+        "venue": "Virtual",
+      },
+      {
+        "month": "February",
+        "date_start": "12",
+        "date_end": "14",
+        "description":
+            "Young Men's Guild Connexional General Executive Committee Meeting",
+        "venue": "Natal Coastal District",
+      },
+      {
+        "month": "February",
+        "date_start": "13",
+        "date_end": "16",
+        "description": "Women's Manyano Connexional Extended Executive Meeting",
+        "venue": "NFSL District",
+      },
+      {
+        "month": "February",
+        "date_start": "13",
+        "date_end": null,
+        "description": "Wesley Guild Connexional General Executive Meeting",
+        "venue": "Virtual",
+      },
+      {
+        "month": "February",
+        "date_start": "15",
+        "date_end": null,
+        "description": "Induction of Rev Sethunya Motlhodi by the Bishop",
+        "venue": "Mphahlele",
+      },
+      {
+        "month": "February",
+        "date_start": "18",
+        "date_end": null,
+        "description": "Ash Wednesday",
+        "venue": null,
+      },
+      {
+        "month": "February",
+        "date_start": "19",
+        "date_end": "20",
+        "description": "Connexional Heritage Standing Committee",
+        "venue": "TBC",
+      },
+      {
+        "month": "February",
+        "date_start": "19",
+        "date_end": "21",
+        "description": "Local Preachers Association General Committee Meeting",
+        "venue": "Highveld & eSwatini District",
+      },
+      {
+        "month": "February",
+        "date_start": "20",
+        "date_end": "22",
+        "description":
+            "Limpopo District Children Ministry Indaba & MCYU Opening Service (Sunday)",
+        "venue": "Hoffenhein Lodge",
+      },
+      {
+        "month": "February",
+        "date_start": "22",
+        "date_end": null,
+        "description": "Induction of Rev Tshepo Nkosi by the Bishop",
+        "venue": "Moreleta",
+      },
+      {
+        "month": "February",
+        "date_start": "24",
+        "date_end": null,
+        "description": "Medical Aid Committee",
+        "venue": "MCO",
+      },
+      {
+        "month": "February",
+        "date_start": "24",
+        "date_end": "25",
+        "description": "Order of Evangelism Coordinators Consultation",
+        "venue": "Emseni",
+      },
+      {
+        "month": "February",
+        "date_start": "26",
+        "date_end": null,
+        "description": "Finance Unit Investment and Advisory",
+        "venue": "Virtual",
+      },
+      {
+        "month": "February",
+        "date_start": "26",
+        "date_end": "March 1",
+        "description":
+            "Connexional Women's Fellowship General Executive Committee Meeting",
+        "venue": "Central District [Maranatha]",
+      },
+      {
+        "month": "February",
+        "date_start": "27",
+        "date_end": null,
+        "description": "Connexional MethSSoc Executive Assembly",
+        "venue": "Virtual",
+      },
+      {
+        "month": "February",
+        "date_start": "27",
+        "date_end": "March 1",
+        "description": "Limpopo Minister's Wives retreat",
+        "venue": "TBA",
+      },
+      {
+        "month": "February",
+        "date_start": "27",
+        "date_end": "March 1",
+        "description": "Limpopo District Music Association Annual Convention",
+        "venue": "Mabopane",
+      },
+      {
+        "month": "February",
+        "date_start": "28",
+        "date_end": null,
+        "description": "Limpopo District Young Women's Manyano DEC",
+        "venue": "Seshego",
+      },
+      {
+        "month": "February",
+        "date_start": "28",
+        "date_end": "March 1",
+        "description":
+            "Limpopo District YAM Strategic session & YAM Mhluzi Circuit Launch",
+        "venue": "Mhluzi Circuit",
+      },
     ];
     final batch = FirebaseFirestore.instance.batch();
     for (var ev in events) {
       final docRef = FirebaseFirestore.instance.collection('events').doc();
-      batch.set(docRef, {
-        ...ev,
-        "createdAt": FieldValue.serverTimestamp(),
-      });
+      batch.set(docRef, {...ev, "createdAt": FieldValue.serverTimestamp()});
     }
     await batch.commit();
     if (mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Seeded 65 events!')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Seeded 65 events!')));
     }
   }
 
   Future<void> _seedSocietiesData() async {
-    showDialog(context: context, builder: (_) => const Center(child: CircularProgressIndicator()));
+    showDialog(
+      context: context,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
     final societies = [
-      {"name": "Zion Society", "circuit": "Pretoria Central", "location": "Pretoria", "leader": "Rev. Smith"},
-      {"name": "Ebenezer Society", "circuit": "Johannesburg East", "location": "Bedfordview", "leader": "Rev. Ndlovu"},
-      {"name": "Central Methodist", "circuit": "Cape Town Central", "location": "Cape Town", "leader": "Rev. Botha"},
-      {"name": "Bethel Society", "circuit": "Durban Coastal", "location": "Durban", "leader": "Rev. Gwala"},
-      {"name": "Wesley Society", "circuit": "Port Elizabeth South", "location": "Gqeberha", "leader": "Rev. Jacobs"},
+      {
+        "name": "Zion Society",
+        "circuit": "Pretoria Central",
+        "location": "Pretoria",
+        "leader": "Rev. Smith",
+      },
+      {
+        "name": "Ebenezer Society",
+        "circuit": "Johannesburg East",
+        "location": "Bedfordview",
+        "leader": "Rev. Ndlovu",
+      },
+      {
+        "name": "Central Methodist",
+        "circuit": "Cape Town Central",
+        "location": "Cape Town",
+        "leader": "Rev. Botha",
+      },
+      {
+        "name": "Bethel Society",
+        "circuit": "Durban Coastal",
+        "location": "Durban",
+        "leader": "Rev. Gwala",
+      },
+      {
+        "name": "Wesley Society",
+        "circuit": "Port Elizabeth South",
+        "location": "Gqeberha",
+        "leader": "Rev. Jacobs",
+      },
     ];
+
+    final existingSnapshot = await FirebaseFirestore.instance
+        .collection('societies')
+        .get();
+    final existingNames = existingSnapshot.docs
+        .map(
+          (doc) => (doc.data()['name'] as String? ?? '').trim().toLowerCase(),
+        )
+        .toSet();
+
     final batch = FirebaseFirestore.instance.batch();
+    var addedCount = 0;
     for (var s in societies) {
+      final name = (s['name'] as String).trim().toLowerCase();
+      if (existingNames.contains(name)) continue;
       final docRef = FirebaseFirestore.instance.collection('societies').doc();
-      batch.set(docRef, {
-        ...s,
-        "createdAt": FieldValue.serverTimestamp(),
-      });
+      batch.set(docRef, {...s, "createdAt": FieldValue.serverTimestamp()});
+      addedCount++;
     }
-    await batch.commit();
+    if (addedCount > 0) {
+      await batch.commit();
+    }
     if (mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Seeded 5 societies!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            addedCount > 0
+                ? 'Seeded $addedCount new societies!'
+                : 'Societies already seeded.',
+          ),
+        ),
+      );
     }
   }
+}
 
+class _LufunoFab extends StatefulWidget {
+  final VoidCallback onTap;
 
+  const _LufunoFab({required this.onTap});
 
-  void _showVASBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      backgroundColor: const Color(0xFFFAF9F6),
-      builder: (context) => SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+  @override
+  State<_LufunoFab> createState() => _LufunoFabState();
+}
+
+class _LufunoFabState extends State<_LufunoFab> with TickerProviderStateMixin {
+  late final AnimationController _pulseController;
+  late final AnimationController _textRotationController;
+  late final List<_GlyphLayout> _ringGlyphs;
+
+  static const double _buttonSize = 56;
+  static const double _textRadius = 46;
+  static const double _ringSize = (_textRadius + 12) * 2;
+
+  static const TextStyle _ringTextStyle = TextStyle(
+    color: Color(0xFFFB8B24),
+    fontSize: 10,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 1.1,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+    _textRotationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 9),
+    )..repeat();
+    _ringGlyphs = _layoutRingGlyphs();
+  }
+
+  // Repeats "Hi, I'm Lufuno" with a bullet separator enough times to wrap
+  // fully around the ring, then measures each glyph once so the animation
+  // only has to rotate a pre-laid-out arc every frame instead of
+  // re-measuring text on each tick.
+  List<_GlyphLayout> _layoutRingGlyphs() {
+    const unit = "Hi, I'm Lufuno   •   ";
+    final unitPainter = TextPainter(
+      text: const TextSpan(text: unit, style: _ringTextStyle),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final unitAngle = unitPainter.width / _textRadius;
+    final repeatCount = (2 * math.pi / unitAngle).floor().clamp(1, 20);
+    final fullText = unit * repeatCount;
+
+    final glyphs = <_GlyphLayout>[];
+    double angle = 0;
+    for (final char in fullText.split('')) {
+      final tp = TextPainter(
+        text: TextSpan(text: char, style: _ringTextStyle),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final theta = tp.width / _textRadius;
+      glyphs.add(_GlyphLayout(painter: tp, angle: angle + theta / 2));
+      angle += theta;
+    }
+    return glyphs;
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _textRotationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Chat with Lufuno',
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: SizedBox(
+          width: _ringSize,
+          height: _ringSize,
+          child: Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
             children: [
-              Container(
-                height: 4,
-                width: 40,
-                margin: const EdgeInsets.only(top: 12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
+              AnimatedBuilder(
+                animation: _textRotationController,
+                builder: (context, child) {
+                  return CustomPaint(
+                    size: const Size(_ringSize, _ringSize),
+                    painter: _CircularTextPainter(
+                      glyphs: _ringGlyphs,
+                      radius: _textRadius,
+                      rotation: _textRotationController.value * 2 * math.pi,
+                    ),
+                  );
+                },
               ),
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'What do you need?',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF3B0D11),
-                      ),
+              AnimatedBuilder(
+                animation: _pulseController,
+                builder: (context, child) {
+                  final t = _pulseController.value;
+                  return Container(
+                    width: _buttonSize + t * 22,
+                    height: _buttonSize + t * 22,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(
+                        0xFFFB8B24,
+                      ).withValues(alpha: (1 - t) * 0.25),
                     ),
-                    const Text(
-                      'Choose a service to purchase',
-                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                  );
+                },
+              ),
+              Container(
+                width: _buttonSize,
+                height: _buttonSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFFB8B24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFB8B24).withValues(alpha: 0.4),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
-                    const SizedBox(height: 20),
-                    _buildVASOption(
-                      title: 'Airtime',
-                      description: 'Top up airtime for any network',
-                      icon: Icons.phone_outlined,
-                      color: const Color(0xFFFB8B24),
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const BuyAirtimeScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    _buildVASOption(
-                      title: 'Data',
-                      description: 'Purchase data bundles',
-                      icon: Icons.wifi_outlined,
-                      color: const Color(0xFFFB8B24),
-                      onTap: () {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Opening Data Purchase'),
-                            backgroundColor: Color(0xFFFB8B24),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    _buildVASOption(
-                      title: 'Electricity',
-                      description: 'Buy electricity tokens',
-                      icon: Icons.bolt_outlined,
-                      color: const Color(0xFFFB8B24),
-                      onTap: () {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Opening Electricity Purchase'),
-                            backgroundColor: Color(0xFFFB8B24),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    _buildVASOption(
-                      title: 'Voucher',
-                      description: 'Purchase gift and scratch vouchers',
-                      icon: Icons.card_giftcard_outlined,
-                      color: const Color(0xFFFB8B24),
-                      onTap: () {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Opening Voucher Purchase'),
-                            backgroundColor: Color(0xFFFB8B24),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 12),
                   ],
+                ),
+                child: const Icon(
+                  Icons.support_agent_rounded,
+                  color: Colors.white,
+                  size: 28,
                 ),
               ),
             ],
@@ -1579,73 +2401,46 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
 
-  Widget _buildVASOption({
-    required String title,
-    required String description,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-          border: Border.all(color: color.withValues(alpha: 0.2)),
-        ),
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 28),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF3B0D11),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    description,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Icon(Icons.arrow_forward_ios, color: color, size: 18),
-          ],
-        ),
-      ),
-    );
+class _GlyphLayout {
+  final TextPainter painter;
+  final double angle;
+
+  const _GlyphLayout({required this.painter, required this.angle});
+}
+
+class _CircularTextPainter extends CustomPainter {
+  final List<_GlyphLayout> glyphs;
+  final double radius;
+  final double rotation;
+
+  _CircularTextPainter({
+    required this.glyphs,
+    required this.radius,
+    required this.rotation,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(rotation);
+
+    for (final glyph in glyphs) {
+      canvas.save();
+      canvas.rotate(glyph.angle);
+      canvas.translate(-glyph.painter.width / 2, -radius);
+      glyph.painter.paint(canvas, Offset.zero);
+      canvas.restore();
+    }
+
+    canvas.restore();
   }
 
-
+  @override
+  bool shouldRepaint(covariant _CircularTextPainter oldDelegate) {
+    return oldDelegate.rotation != rotation || oldDelegate.glyphs != glyphs;
+  }
 }

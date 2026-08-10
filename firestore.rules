@@ -1,0 +1,47 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // User Profile Documents
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    // App Collections: Media, Notices, Giving Options, Events, Societies, Communities
+    match /media/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /notices/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /giving_options/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /events/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /societies/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /communities/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Default fallback rule
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

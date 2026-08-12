@@ -44,7 +44,7 @@ class _BuyElectricityScreenState extends State<BuyElectricityScreen> {
       backgroundColor: const Color(0xFFFAF9F6),
       appBar: AppBar(
         centerTitle: true,
-        backgroundColor: const Color(0xFF2E7D32),
+        backgroundColor: const Color(0xFF3B0D11),
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
@@ -108,10 +108,10 @@ class _BuyElectricityScreenState extends State<BuyElectricityScreen> {
                   decoration: InputDecoration(
                     hintText: 'Enter 11-digit meter number',
                     hintStyle: TextStyle(color: Colors.grey[400]),
-                    prefixIcon: const Icon(Icons.speed_rounded, color: Color(0xFF2E7D32)),
+                    prefixIcon: const Icon(Icons.speed_rounded, color: Color(0xFFFB8B24)),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFF2E7D32)),
+                      borderSide: const BorderSide(color: Color(0xFFFB8B24)),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -119,7 +119,7 @@ class _BuyElectricityScreenState extends State<BuyElectricityScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+                      borderSide: const BorderSide(color: Color(0xFFFB8B24), width: 2),
                     ),
                     filled: true,
                     fillColor: Colors.white,
@@ -141,7 +141,7 @@ class _BuyElectricityScreenState extends State<BuyElectricityScreen> {
                     hintStyle: TextStyle(color: Colors.grey[400]),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFF2E7D32)),
+                      borderSide: const BorderSide(color: Color(0xFFFB8B24)),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -149,7 +149,7 @@ class _BuyElectricityScreenState extends State<BuyElectricityScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+                      borderSide: const BorderSide(color: Color(0xFFFB8B24), width: 2),
                     ),
                     filled: true,
                     fillColor: Colors.white,
@@ -167,13 +167,13 @@ class _BuyElectricityScreenState extends State<BuyElectricityScreen> {
                       selected: isSelected,
                       onSelected: (_) => setState(() => _amountController.text = amt),
                       backgroundColor: Colors.white,
-                      selectedColor: const Color(0xFF2E7D32).withValues(alpha: 0.15),
+                      selectedColor: const Color(0xFFFB8B24).withValues(alpha: 0.15),
                       side: BorderSide(
-                        color: isSelected ? const Color(0xFF2E7D32) : Colors.grey[300]!,
+                        color: isSelected ? const Color(0xFFFB8B24) : Colors.grey[300]!,
                         width: isSelected ? 2 : 1,
                       ),
                       labelStyle: TextStyle(
-                        color: isSelected ? const Color(0xFF2E7D32) : const Color(0xFF3B0D11),
+                        color: isSelected ? const Color(0xFFFB8B24) : const Color(0xFF3B0D11),
                         fontWeight: FontWeight.w600,
                       ),
                     );
@@ -184,13 +184,13 @@ class _BuyElectricityScreenState extends State<BuyElectricityScreen> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
-                      BoxShadow(color: const Color(0xFF2E7D32).withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4)),
+                      BoxShadow(color: const Color(0xFFFB8B24).withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4)),
                     ],
                   ),
                   child: ElevatedButton(
                     onPressed: _proceed,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2E7D32),
+                      backgroundColor: const Color(0xFFFB8B24),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

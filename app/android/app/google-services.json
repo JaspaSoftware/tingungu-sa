@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "226294099341-4e3c5tuhi0tr4r4ksd04rmajpaot7l01.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "za.co.tingungu.mytingungu",
+            "certificate_hash": "879135f47173a60a7d8188bc0f902020450c9975"
+          }
+        },
+        {
           "client_id": "226294099341-a19kb4c5ao7m312apjihkv523v66n440.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
@@ -71,6 +79,14 @@
           "android_info": {
             "package_name": "za.co.tingungu.tingungu_app",
             "certificate_hash": "e0dc3a619e3a782034c5dbb72bda67353d73e696"
+          }
+        },
+        {
+          "client_id": "226294099341-e5cm1itc8s4fp5kcbu87fpe6kuuqa87f.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "za.co.tingungu.tingungu_app",
+            "certificate_hash": "879135f47173a60a7d8188bc0f902020450c9975"
           }
         },
         {

@@ -17,7 +17,7 @@ import '../data/scripture_model.dart';
 import 'buy_airtime_screen.dart';
 import 'buy_data_screen.dart';
 import 'buy_electricity_screen.dart';
-import 'buy_voucher_screen.dart';
+import 'e_market_screen.dart';
 import 'chat_screen.dart';
 import '../services/scripture_service.dart';
 import 'community_screen.dart';
@@ -36,7 +36,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+class _HomeScreenState extends State<HomeScreen>
+    with WidgetsBindingObserver, TickerProviderStateMixin {
   int _currentIndex = 0;
   int? _slidingHoverIndex;
   Scripture? dailyScripture;
@@ -66,11 +67,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   late final PageController _tilesPageController;
   int _currentTileIndex = 0;
+  late final AnimationController _tileShineController;
 
   @override
   void initState() {
     super.initState();
     _tilesPageController = PageController(viewportFraction: 0.88);
+    _tileShineController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat();
     _loadUserProfile();
     _loadDailyScripture();
     _loadWalletBalance();
@@ -184,6 +190,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _tilesPageController.dispose();
+    _tileShineController.dispose();
     _userSubscription?.cancel();
     super.dispose();
   }
@@ -617,7 +624,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         'title': 'Electricity Tokens',
         'subtitle': 'Prepaid electricity tokens for Eskom & Municipal meters',
         'icon': Icons.bolt_rounded,
-        'color': const Color(0xFF2E7D32),
+        'color': const Color(0xFFFB8B24),
         'badge': 'PREPAID',
         'onTap': () => Navigator.push(
           context,
@@ -625,14 +632,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
       },
       {
-        'title': 'Gift & Store Vouchers',
-        'subtitle': 'Digital gift vouchers and retail scratch cards',
-        'icon': Icons.card_giftcard_rounded,
-        'color': const Color(0xFF6A1B9A),
-        'badge': 'VOUCHERS',
+        'title': 'E-Market',
+        'subtitle': 'Shop digital goods and services in one place',
+        'icon': Icons.storefront_rounded,
+        'color': const Color(0xFFFB8B24),
+        'badge': 'SHOPPING',
         'onTap': () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const BuyVoucherScreen()),
+          MaterialPageRoute(builder: (context) => const EMarketScreen()),
         ),
       },
     ];
@@ -668,25 +675,31 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 padding: const EdgeInsets.only(right: 12),
                 child: GestureDetector(
                   onTap: tile['onTap'] as VoidCallback,
-                  child: AnimatedContainer(
+                  child: Stack(
+                    children: [
+                      AnimatedContainer(
                     duration: const Duration(milliseconds: 250),
                     curve: Curves.easeOut,
                     decoration: BoxDecoration(
-                      color: Colors.white,
                       borderRadius: BorderRadius.circular(18),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF3B0D11), Color(0xFF5A151C)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+                          color: const Color(0xFF3B0D11).withValues(alpha: 0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 5),
                         ),
                       ],
-                      border: Border.all(
-                        color: isSelected
-                            ? color.withValues(alpha: 0.5)
-                            : Colors.grey.shade200,
-                        width: isSelected ? 1.5 : 0.8,
-                      ),
+                      border: isSelected
+                          ? null
+                          : Border.all(
+                              color: Colors.white.withValues(alpha: 0.08),
+                              width: 0.8,
+                            ),
                     ),
                     padding: const EdgeInsets.all(16),
                     child: Row(
@@ -695,8 +708,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           width: 50,
                           height: 50,
                           decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(12),
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
                           ),
                           child: Icon(
                             tile['icon'] as IconData,
@@ -718,32 +731,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       style: const TextStyle(
                                         fontSize: 15,
                                         fontWeight: FontWeight.bold,
-                                        color: Color(0xFF3B0D11),
+                                        color: Colors.white,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: color.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      tile['badge'] as String,
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.bold,
-                                        color: color,
-                                        letterSpacing: 0.4,
+                                  if (tile['badge'] != null) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: color.withValues(alpha: 0.3),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        tile['badge'] as String,
+                                        style: const TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                          letterSpacing: 0.4,
+                                        ),
                                       ),
                                     ),
-                                  ),
+                                  ],
                                 ],
                               ),
                               const SizedBox(height: 6),
@@ -751,7 +766,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 tile['subtitle'] as String,
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.grey[600],
+                                  color: Colors.white.withValues(alpha: 0.7),
                                   height: 1.3,
                                 ),
                                 maxLines: 2,
@@ -764,10 +779,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         Icon(
                           Icons.chevron_right_rounded,
                           size: 20,
-                          color: Colors.grey[400],
+                          color: Colors.white.withValues(alpha: 0.6),
                         ),
                       ],
                     ),
+                  ),
+                      if (isSelected)
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: AnimatedBuilder(
+                              animation: _tileShineController,
+                              builder: (context, _) => CustomPaint(
+                                painter: _ShinyBorderPainter(
+                                  progress: _tileShineController.value,
+                                  borderRadius: 18,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               );
@@ -794,77 +825,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildMarketplaceTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-          border: Border.all(color: Colors.grey.shade200, width: 0.8),
-        ),
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 26),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF3B0D11),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                      height: 1.3,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 20,
-              color: Colors.grey[400],
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -2443,4 +2403,57 @@ class _CircularTextPainter extends CustomPainter {
   bool shouldRepaint(covariant _CircularTextPainter oldDelegate) {
     return oldDelegate.rotation != rotation || oldDelegate.glyphs != glyphs;
   }
+}
+
+// Draws a slow, roaming light chasing itself around the tile's border -
+// a subtle base ring plus a bright glint that keeps sliding away, rather
+// than a static solid outline.
+class _ShinyBorderPainter extends CustomPainter {
+  final double progress;
+  final double borderRadius;
+
+  static const _accent = Color(0xFFFB8B24);
+  static const _strokeWidth = 1.6;
+
+  _ShinyBorderPainter({
+    required this.progress,
+    required this.borderRadius,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(
+      _strokeWidth / 2,
+      _strokeWidth / 2,
+      size.width - _strokeWidth,
+      size.height - _strokeWidth,
+    );
+    final rrect = RRect.fromRectAndRadius(
+      rect,
+      Radius.circular(borderRadius),
+    );
+
+    final gradient = SweepGradient(
+      transform: GradientRotation(progress * 2 * math.pi),
+      colors: [
+        _accent.withValues(alpha: 0.18),
+        _accent.withValues(alpha: 0.7),
+        Colors.white.withValues(alpha: 0.95),
+        _accent.withValues(alpha: 0.7),
+        _accent.withValues(alpha: 0.18),
+      ],
+      stops: const [0.0, 0.12, 0.2, 0.28, 1.0],
+    );
+
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _strokeWidth
+      ..shader = gradient.createShader(rect);
+
+    canvas.drawRRect(rrect, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ShinyBorderPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }

@@ -705,9 +705,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                       .toLowerCase()
                       .trim() ??
                   '';
-              return userSoc == targetName ||
-                  userSoc.contains(targetName) ||
-                  targetName.contains(userSoc);
+              return userSoc == targetName;
             }).length;
           }
 
@@ -1153,9 +1151,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   .toLowerCase()
                   .trim() ??
               '';
-          return userSoc == targetSociety ||
-              userSoc.contains(targetSociety) ||
-              targetSociety.contains(userSoc);
+          return userSoc == targetSociety;
         }).toList();
 
         if (members.isEmpty) {

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../data/society_model.dart';
@@ -25,14 +26,24 @@ class _CommunityScreenState extends State<CommunityScreen> {
   final TextEditingController _messageController = TextEditingController();
   bool _isSending = false;
 
+  // Presence's Away state is derived from a timestamp rather than pushed by
+  // the backgrounded device (see PresenceService), so nothing tells this
+  // screen when a member crosses the away threshold. Rebuild periodically
+  // so that transition still becomes visible without a fresh Firestore write.
+  Timer? _presenceRefreshTimer;
+
   @override
   void initState() {
     super.initState();
     _loadUserSociety();
+    _presenceRefreshTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   void dispose() {
+    _presenceRefreshTimer?.cancel();
     _messageController.dispose();
     super.dispose();
   }
@@ -206,6 +217,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
     final isMe = memberId == FirebaseAuth.instance.currentUser?.uid;
     final presenceActive = userData['presence_active'] == true;
     final currentStatus = userData['presence_status']?.toString();
+    final currentBackgroundedAt = userData['presence_backgrounded_at'];
 
     showModalBottomSheet(
       context: context,
@@ -403,6 +415,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     PresenceService.labelFor(
                       active: selectedActive,
                       status: selectedStatus,
+                      backgroundedAt: isMe ? null : currentBackgroundedAt,
                     ),
                   ),
 
@@ -1192,13 +1205,16 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 data['role']?.toString() ?? (isMe ? 'Active Member' : 'Member');
             final presenceActive = data['presence_active'] == true;
             final presenceStatus = data['presence_status']?.toString();
+            final presenceBackgroundedAt = data['presence_backgrounded_at'];
             final presenceColor = PresenceService.colorFor(
               active: presenceActive,
               status: presenceStatus,
+              backgroundedAt: presenceBackgroundedAt,
             );
             final presenceLabel = PresenceService.labelFor(
               active: presenceActive,
               status: presenceStatus,
+              backgroundedAt: presenceBackgroundedAt,
             );
 
             final avatarProvider = AvatarUtils.getAvatarImageProvider(avatar);

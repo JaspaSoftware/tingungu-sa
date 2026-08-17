@@ -295,10 +295,11 @@ class _ProfilePageState extends State<ProfilePage> {
                                             )
                                             .toList(),
                                         onChanged: (val) {
-                                          if (val != null)
+                                          if (val != null) {
                                             setModalState(
                                               () => selectedDay = val,
                                             );
+                                          }
                                         },
                                       ),
                                     ),
@@ -351,10 +352,11 @@ class _ProfilePageState extends State<ProfilePage> {
                                             )
                                             .toList(),
                                         onChanged: (val) {
-                                          if (val != null)
+                                          if (val != null) {
                                             setModalState(
                                               () => selectedMonth = val,
                                             );
+                                          }
                                         },
                                       ),
                                     ),

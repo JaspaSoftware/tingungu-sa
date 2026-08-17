@@ -62,6 +62,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   bool _isLoadingProfile = true;
 
+  bool _wasBackgrounded = false;
+
   double walletBalance = 0.0;
   bool _isLoadingWallet = true;
 
@@ -88,15 +90,31 @@ class _HomeScreenState extends State<HomeScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
+        _wasBackgrounded = false;
         PresenceService.markAppForeground();
         break;
       case AppLifecycleState.paused:
-      case AppLifecycleState.detached:
-        PresenceService.markAppBackground();
-        break;
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
+      case AppLifecycleState.detached:
+        // Only Logout should ever make a member appear Offline, so
+        // backgrounding no longer touches presence_active. Instead this
+        // records when the app was backgrounded; PresenceService derives
+        // Away from that timestamp at render time, since a client-side
+        // timer wouldn't reliably fire once the app is suspended.
+        _wasBackgrounded = true;
+        PresenceService.markAppBackground();
         break;
+    }
+  }
+
+  /// Retries clearing a stale backgrounded timestamp on tap, in case the
+  /// write from [didChangeAppLifecycleState]'s resume handler didn't land
+  /// (e.g. no network at that instant).
+  void _onScreenTap() {
+    if (_wasBackgrounded) {
+      _wasBackgrounded = false;
+      PresenceService.markAppForeground();
     }
   }
 
@@ -218,89 +236,95 @@ class _HomeScreenState extends State<HomeScreen>
       );
     }
 
-    return Scaffold(
-      key: _scaffoldKey,
-      drawer: _buildDrawer(),
-      backgroundColor: const Color(0xFFFAF9F6),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              _buildTopBar(),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 8,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (!_profileCompleted)
-                      Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.only(bottom: 20),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFB8B24).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFFB8B24)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.warning_amber_rounded,
-                              color: Color(0xFFFB8B24),
-                            ),
-                            const SizedBox(width: 12),
-                            const Expanded(
-                              child: Text(
-                                "Please complete your profile.",
-                                style: TextStyle(
-                                  color: Color(0xFF3B0D11),
-                                  fontWeight: FontWeight.bold,
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: _onScreenTap,
+      child: Scaffold(
+        key: _scaffoldKey,
+        drawer: _buildDrawer(),
+        backgroundColor: const Color(0xFFFAF9F6),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                _buildTopBar(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (!_profileCompleted)
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 20),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFFFB8B24,
+                            ).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFFB8B24)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.warning_amber_rounded,
+                                color: Color(0xFFFB8B24),
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Text(
+                                  "Please complete your profile.",
+                                  style: TextStyle(
+                                    color: Color(0xFF3B0D11),
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
-                            ),
-                            ElevatedButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const ProfilePage(),
-                                  ),
-                                ).then((_) => _loadUserProfile());
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFFB8B24),
-                                foregroundColor: Colors.white,
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const ProfilePage(),
+                                    ),
+                                  ).then((_) => _loadUserProfile());
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFFB8B24),
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: const Text("Complete"),
                               ),
-                              child: const Text("Complete"),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    _buildGreeting(),
-                    const SizedBox(height: 16),
-                    _buildWalletCard(),
-                    const SizedBox(height: 16),
-                    _buildScriptureCard(),
-                    const SizedBox(height: 20),
-                    _buildMarketplace(),
-                    const SizedBox(height: 100),
-                  ],
+                      _buildGreeting(),
+                      const SizedBox(height: 16),
+                      _buildWalletCard(),
+                      const SizedBox(height: 16),
+                      _buildScriptureCard(),
+                      const SizedBox(height: 20),
+                      _buildMarketplace(),
+                      const SizedBox(height: 100),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-      bottomNavigationBar: _buildBottomNav(),
-      floatingActionButton: Transform.translate(
-        offset: const Offset(0, 20),
-        child: _LufunoFab(
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ChatScreen()),
+        bottomNavigationBar: _buildBottomNav(),
+        floatingActionButton: Transform.translate(
+          offset: const Offset(0, 20),
+          child: _LufunoFab(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ChatScreen()),
+            ),
           ),
         ),
       ),
@@ -678,112 +702,118 @@ class _HomeScreenState extends State<HomeScreen>
                   child: Stack(
                     children: [
                       AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeOut,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(18),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF3B0D11), Color(0xFF5A151C)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF3B0D11).withValues(alpha: 0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                      border: isSelected
-                          ? null
-                          : Border.all(
-                              color: Colors.white.withValues(alpha: 0.08),
-                              width: 0.8,
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOut,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(18),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF3B0D11), Color(0xFF5A151C)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(
+                                0xFF3B0D11,
+                              ).withValues(alpha: 0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 5),
                             ),
-                    ),
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            tile['icon'] as IconData,
-                            color: color,
-                            size: 26,
-                          ),
+                          ],
+                          border: isSelected
+                              ? null
+                              : Border.all(
+                                  color: Colors.white.withValues(alpha: 0.08),
+                                  width: 0.8,
+                                ),
                         ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Row(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                tile['icon'] as IconData,
+                                color: color,
+                                size: 26,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Flexible(
-                                    child: Text(
-                                      tile['title'] as String,
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  if (tile['badge'] != null) ...[
-                                    const SizedBox(width: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: color.withValues(alpha: 0.3),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        tile['badge'] as String,
-                                        style: const TextStyle(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                          letterSpacing: 0.4,
+                                  Row(
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          tile['title'] as String,
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
+                                      if (tile['badge'] != null) ...[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: color.withValues(alpha: 0.3),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            tile['badge'] as String,
+                                            style: const TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                              letterSpacing: 0.4,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    tile['subtitle'] as String,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.white.withValues(
+                                        alpha: 0.7,
+                                      ),
+                                      height: 1.3,
                                     ),
-                                  ],
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ],
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                tile['subtitle'] as String,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.white.withValues(alpha: 0.7),
-                                  height: 1.3,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              size: 20,
+                              color: Colors.white.withValues(alpha: 0.6),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Icon(
-                          Icons.chevron_right_rounded,
-                          size: 20,
-                          color: Colors.white.withValues(alpha: 0.6),
-                        ),
-                      ],
-                    ),
-                  ),
+                      ),
                       if (isSelected)
                         Positioned.fill(
                           child: IgnorePointer(
@@ -2415,10 +2445,7 @@ class _ShinyBorderPainter extends CustomPainter {
   static const _accent = Color(0xFFFB8B24);
   static const _strokeWidth = 1.6;
 
-  _ShinyBorderPainter({
-    required this.progress,
-    required this.borderRadius,
-  });
+  _ShinyBorderPainter({required this.progress, required this.borderRadius});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2428,10 +2455,7 @@ class _ShinyBorderPainter extends CustomPainter {
       size.width - _strokeWidth,
       size.height - _strokeWidth,
     );
-    final rrect = RRect.fromRectAndRadius(
-      rect,
-      Radius.circular(borderRadius),
-    );
+    final rrect = RRect.fromRectAndRadius(rect, Radius.circular(borderRadius));
 
     final gradient = SweepGradient(
       transform: GradientRotation(progress * 2 * math.pi),

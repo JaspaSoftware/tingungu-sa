@@ -40,11 +40,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _registerUser() async {
     if (_formKey.currentState!.validate()) {
       if (!_agreedToTerms) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Please agree to the terms to continue"),
-          ),
-        );
+        _showErrorMessage("Please agree to the terms to continue");
         return;
       }
 
@@ -105,11 +101,49 @@ class _RegisterScreenState extends State<RegisterScreen> {
           message = e.message!;
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message), backgroundColor: Colors.red),
-        );
+        _showErrorMessage(message);
       }
     }
+  }
+
+  void _showErrorMessage(String message) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        elevation: 6,
+        backgroundColor: const Color(0xFF3B0D11),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: Color(0xFFFB8B24), width: 1),
+        ),
+        duration: const Duration(seconds: 30),
+        content: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.error_outline_rounded, color: Color(0xFFFB8B24)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ],
+        ),
+        action: SnackBarAction(
+          label: 'Dismiss',
+          textColor: const Color(0xFFFB8B24),
+          onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+        ),
+      ),
+    );
   }
 
   void _showEmailAlreadyExistsDialog(String email) {
@@ -141,6 +175,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF3B0D11),
                 ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Image.asset(
+              'lib/assets/images/logo.png',
+              height: 24,
+              width: 24,
+              errorBuilder: (context, error, stackTrace) => const Icon(
+                Icons.church,
+                size: 24,
+                color: Color(0xFF3B0D11),
               ),
             ),
           ],
@@ -271,12 +316,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (kDebugMode) print('Google Sign-In Error: $e');
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Google Sign-In failed: $e"),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showErrorMessage("Google Sign-In failed: $e");
       }
     }
   }
@@ -294,6 +334,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const SizedBox(height: 30),
+
+                  // App Logo
+                  Image.asset(
+                    'lib/assets/images/logo.png',
+                    height: 90,
+                    errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.church,
+                      size: 80,
+                      color: Color(0xFF3B0D11),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   const Text(
                     "Create Your Account",
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
@@ -345,11 +397,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Checkbox(
-                              value: _agreedToTerms,
-                              onChanged: (value) {
-                                setState(() => _agreedToTerms = value!);
-                              },
+                            Transform.translate(
+                              offset: const Offset(0, -13),
+                              child: Checkbox(
+                                value: _agreedToTerms,
+                                onChanged: (value) {
+                                  setState(() => _agreedToTerms = value!);
+                                },
+                              ),
                             ),
                             Expanded(
                               child: GestureDetector(

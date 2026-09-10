@@ -1,1 +1,91 @@
 
+name: Bug report
+description: Report something broken in the app
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Short summary
+      description: One sentence describing the problem.
+      placeholder: e.g. Event RSVP button not saving
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: What did you do? (Steps to reproduce)
+      placeholder: |
+        1. Open the app
+        2. Tap...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot
+      description: Drag and drop an image here if you have one.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Where did this happen?
+      options:
+        - Android app
+        - iOS app
+        - Website / mobile browser
+        - Website / desktop browser
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: client
+    attributes:
+      label: Which app is this for?
+      options:
+        - Amar
+        - Tingungu
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: Leave as P2 if you are not sure — the Lead will confirm it.
+      options:
+        - P1 - Urgent (blocking or affects live customers)
+        - P2 - This week
+        - P3 - Backlog
+      default: 1
+    validations:
+      required: true
+
+  - type: input
+    id: reported-by
+    attributes:
+      label: Reported by
+      description: Your name, or "Customer via [channel]" if this was reported by a user or client.
+    validations:
+      required: true

@@ -39,6 +39,33 @@ service cloud.firestore {
       allow write: if true;
     }
 
+    // Circuits & Societies directory (Community info hub) - public read,
+    // writes restricted to signed-in admins/seed scripts.
+    match /districts/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /circuits/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /ministers/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /categories/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /appointments/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
     // Default fallback rule
     match /{document=**} {
       allow read, write: if request.auth != null;

@@ -48,21 +48,21 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyCAUA2qK41jnftXP_g2yx-P4yYyZwWgA_U',
-    appId: '1:226294099341:android:6cbb7d031dae132b1e61c4',
+    appId: '1:226294099341:android:d56d958c854eafba1e61c4',
     messagingSenderId: '226294099341',
     projectId: 'tingungu-sa',
     storageBucket: 'tingungu-sa.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDV6swxfIykKZM3AR8WZX_dzdB9tb5iQ9Q',
     appId: '1:226294099341:ios:96ec57528fae19051e61c4',
     messagingSenderId: '226294099341',
     projectId: 'tingungu-sa',
     storageBucket: 'tingungu-sa.firebasestorage.app',
+    androidClientId: '226294099341-4e3c5tuhi0tr4r4ksd04rmajpaot7l01.apps.googleusercontent.com',
+    iosClientId: '226294099341-gj5nvka1v8l9ncad8nb982h3gpk5lkoj.apps.googleusercontent.com',
     iosBundleId: 'za.co.tingungu.tingunguApp',
   );
-
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyC4sTuXfgLY2ab0V_gqOwskb5GMToCI2tE',
     appId: '1:226294099341:web:eda15431457914bf1e61c4',

@@ -1150,6 +1150,22 @@ class _HomeScreenState extends State<HomeScreen>
                         _seedSocietiesData();
                       },
                     ),
+                    ListTile(
+                      dense: true,
+                      leading: const Icon(
+                        Icons.refresh,
+                        size: 18,
+                        color: Color(0xFFFB8B24),
+                      ),
+                      title: const Text(
+                        'Seed Circuits & Ministers Data',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _seedCircuitsData();
+                      },
+                    ),
                   ],
                 ),
 
@@ -2243,6 +2259,492 @@ class _HomeScreenState extends State<HomeScreen>
                 ? 'Seeded $addedCount new societies!'
                 : 'Societies already seeded.',
           ),
+        ),
+      );
+    }
+  }
+
+  /// Seeds the Circuits & Societies info hub directory (districts, circuits,
+  /// societies, ministers, categories, appointments) directly from the app,
+  /// using deterministic doc IDs so re-running never creates duplicates.
+  Future<void> _seedCircuitsData() async {
+    showDialog(
+      context: context,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final districts = [
+      {'id': '1', 'name': 'Limpopo'},
+    ];
+
+    final categories = [
+      {'id': '1', 'name': 'District Bishop'},
+      {'id': '2', 'name': 'Superintendent'},
+      {'id': '3', 'name': 'Ordained'},
+      {'id': '4', 'name': 'Probationer'},
+      {'id': '5', 'name': 'Chaplain/Ordained'},
+    ];
+
+    final circuits = [
+      {'id': '1', 'code': '1100', 'name': 'Limpopo'},
+      {'id': '2', 'code': '1101', 'name': 'Central'},
+      {'id': '3', 'code': '1102', 'name': 'Moreleta'},
+      {'id': '4', 'code': '1103', 'name': 'Magalies'},
+      {'id': '5', 'code': '1105', 'name': 'Hennops'},
+      {'id': '6', 'code': '1106', 'name': 'Coalfields'},
+      {'id': '7', 'code': '1107', 'name': 'Maranatha'},
+      {'id': '8', 'code': '1108', 'name': 'Middleburg'},
+      {'id': '9', 'code': '1109', 'name': 'Escarpment'},
+      {'id': '10', 'code': '1111', 'name': 'Pilanesburg'},
+      {'id': '11', 'code': '1112', 'name': 'Platinum'},
+      {'id': '12', 'code': '1113', 'name': 'Mabieskraal'},
+      {'id': '13', 'code': '1114', 'name': 'Wabela'},
+      {'id': '14', 'code': '1115', 'name': 'Temba'},
+      {'id': '15', 'code': '1116', 'name': 'Makapan'},
+      {'id': '16', 'code': '1117', 'name': 'Lebotloane'},
+      {'id': '17', 'code': '1118', 'name': 'Soutpansburg'},
+      {'id': '18', 'code': '1119', 'name': 'Ysterberg'},
+      {'id': '19', 'code': '1120', 'name': 'Letaba'},
+      {'id': '20', 'code': '1121', 'name': 'Mbombela'},
+      {'id': '21', 'code': '1122', 'name': 'Mhluzi'},
+      {'id': '22', 'code': '1123', 'name': 'Sabie and Shateli'},
+      {'id': '23', 'code': '1124', 'name': 'Lowveld'},
+      {'id': '24', 'code': '1125', 'name': 'Nkomazi'},
+      {'id': '25', 'code': '1129', 'name': 'Capricorn West'},
+      {'id': '26', 'code': '1130', 'name': 'Capricorn East'},
+      {'id': '27', 'code': '1131', 'name': 'Soshanguve'},
+      {'id': '28', 'code': '1132', 'name': 'Mogalakwena'},
+      {'id': '29', 'code': '1133', 'name': 'Zebediela'},
+      {'id': '30', 'code': '1134', 'name': 'Mphahlele'},
+      {'id': '31', 'code': '1135', 'name': 'Sekhukhune'},
+      {'id': '32', 'code': '1136', 'name': 'Northern ODI'},
+      {'id': '33', 'code': '1137', 'name': 'Mabopane'},
+      {'id': '34', 'code': '1138', 'name': 'Ga-Rankuwa'},
+    ];
+
+    final societies = [
+      {'id': '1', 'name': 'Willows', 'circuitId': '2'},
+      {'id': '2', 'name': 'Atteridgeville', 'circuitId': '2'},
+      {'id': '3', 'name': 'Sunnyside', 'circuitId': '2'},
+      {'id': '4', 'name': 'Saulsville', 'circuitId': '2'},
+      {'id': '5', 'name': 'Brooklyn', 'circuitId': '2'},
+      {'id': '6', 'name': 'Pta Central', 'circuitId': '2'},
+      {'id': '7', 'name': 'The Glen', 'circuitId': '3'},
+      {'id': '8', 'name': 'Eastview', 'circuitId': '3'},
+      {'id': '9', 'name': 'Eersterust', 'circuitId': '3'},
+      {'id': '10', 'name': 'Brooklyn', 'circuitId': '3'},
+      {'id': '11', 'name': 'St Georges', 'circuitId': '3'},
+      {'id': '12', 'name': 'Mamelodi East', 'circuitId': '3'},
+      {'id': '13', 'name': 'Mamelodi Central', 'circuitId': '3'},
+      {'id': '14', 'name': 'Valley', 'circuitId': '4'},
+      {'id': '15', 'name': 'Sinoville', 'circuitId': '4'},
+      {'id': '16', 'name': 'Pta North & Trinity', 'circuitId': '4'},
+      {'id': '17', 'name': 'Trinity', 'circuitId': '4'},
+      {'id': '18', 'name': 'Midstream', 'circuitId': '5'},
+      {'id': '19', 'name': 'Westview', 'circuitId': '5'},
+      {'id': '20', 'name': 'Elim', 'circuitId': '5'},
+      {'id': '21', 'name': 'Gracewell', 'circuitId': '5'},
+      {'id': '22', 'name': 'Lyttleton', 'circuitId': '5'},
+      {'id': '23', 'name': "Mnandi/St John's", 'circuitId': '5'},
+      {'id': '24', 'name': 'Coalfields', 'circuitId': '6'},
+      {'id': '25', 'name': 'Kungwini', 'circuitId': '6'},
+      {'id': '26', 'name': 'Siyabuswa', 'circuitId': '7'},
+      {'id': '27', 'name': 'Middleburg', 'circuitId': '8'},
+      {'id': '28', 'name': 'Groblersdal', 'circuitId': '8'},
+      {'id': '29', 'name': 'Lydenburg & Sabie', 'circuitId': '9'},
+      {'id': '30', 'name': 'Rustenburg/Mooinooi', 'circuitId': '10'},
+      {'id': '31', 'name': 'Geelhout Park', 'circuitId': '10'},
+      {'id': '32', 'name': 'Thlabane', 'circuitId': '10'},
+      {'id': '33', 'name': 'Ebenezer', 'circuitId': '11'},
+      {'id': '34', 'name': 'Bethel', 'circuitId': '11'},
+      {'id': '35', 'name': 'Mabieskraal', 'circuitId': '12'},
+      {'id': '36', 'name': 'Belabela', 'circuitId': '13'},
+      {'id': '37', 'name': 'Waterberg', 'circuitId': '13'},
+      {'id': '38', 'name': 'Temba', 'circuitId': '14'},
+      {'id': '39', 'name': 'Makapan', 'circuitId': '15'},
+      {'id': '40', 'name': 'Lebotloane', 'circuitId': '16'},
+      {'id': '41', 'name': 'Ha-Tshikota', 'circuitId': '17'},
+      {'id': '42', 'name': 'Louis Trichard', 'circuitId': '17'},
+      {'id': '43', 'name': 'Ysterberg', 'circuitId': '18'},
+      {'id': '44', 'name': 'Wesley', 'circuitId': '18'},
+      {'id': '45', 'name': 'Aldersgate', 'circuitId': '18'},
+      {'id': '46', 'name': 'Tzaneen', 'circuitId': '19'},
+      {'id': '47', 'name': 'Namakgale//Nkowankowa', 'circuitId': '19'},
+      {'id': '48', 'name': 'Phalaborwa', 'circuitId': '19'},
+      {'id': '49', 'name': 'Lekazi', 'circuitId': '20'},
+      {'id': '50', 'name': 'Kabokweni', 'circuitId': '20'},
+      {'id': '51', 'name': 'White River', 'circuitId': '20'},
+      {'id': '52', 'name': 'Penryn', 'circuitId': '20'},
+      {'id': '53', 'name': 'Mhluzi', 'circuitId': '21'},
+      {'id': '54', 'name': 'Sabie and Shateli', 'circuitId': '22'},
+      {'id': '55', 'name': 'John Wesley/Lowveld', 'circuitId': '23'},
+      {'id': '56', 'name': 'Barberton', 'circuitId': '23'},
+      {'id': '57', 'name': 'Nkomazi', 'circuitId': '24'},
+      {'id': '58', 'name': 'Capricorn West', 'circuitId': '25'},
+      {'id': '59', 'name': 'Capricorn East', 'circuitId': '26'},
+      {'id': '60', 'name': 'Soshanguve', 'circuitId': '27'},
+      {'id': '61', 'name': 'Mogalakwena', 'circuitId': '28'},
+      {'id': '62', 'name': 'Zebediela', 'circuitId': '29'},
+      {'id': '63', 'name': 'Mphahlele', 'circuitId': '30'},
+      {'id': '64', 'name': 'Sekhukhune', 'circuitId': '31'},
+      {'id': '65', 'name': 'Northern ODI', 'circuitId': '32'},
+      {'id': '66', 'name': 'Willowbrook', 'circuitId': '33'},
+      {'id': '67', 'name': 'Mabopane', 'circuitId': '33'},
+      {'id': '68', 'name': 'Ga-Rankuwa', 'circuitId': '34'},
+    ];
+
+    final ministers = [
+      {
+        'id': '1',
+        'surname': 'MOKGOTHU',
+        'firstName': 'SIDWELL',
+        'cellphone': '0829654807',
+        'email': 'bishop@mcsalimpopo.co.za',
+      },
+      {
+        'id': '2',
+        'surname': 'MERCER',
+        'firstName': 'GRAEME',
+        'cellphone': '0829263798',
+        'email': 'graeme.mercer@willows.org.za',
+      },
+      {
+        'id': '3',
+        'surname': 'BOSMAN',
+        'firstName': 'SMANGA',
+        'cellphone': '0829263798',
+        'email': 'smanga@glenmethodist.co.za',
+      },
+      {
+        'id': '4',
+        'surname': 'MNTAMBO',
+        'firstName': 'KEDIBONE',
+        'cellphone': '0725915145',
+        'email': 'revk.valley.mc@gmail.com',
+      },
+      {
+        'id': '5',
+        'surname': 'RAMAGE',
+        'firstName': 'JAMES',
+        'cellphone': '0834591947',
+        'email': 'jim@midstreammethodist.org.za',
+      },
+      {
+        'id': '6',
+        'surname': 'KOEKOE',
+        'firstName': 'PHEZILE',
+        'cellphone': '0782954396',
+        'email': 'phzlkoekoe@yahoo.com',
+      },
+      {
+        'id': '7',
+        'surname': 'PHUNGULA',
+        'firstName': 'NOMVULA',
+        'cellphone': '0790278129',
+        'email': 'cyrilphungula@gmail.com',
+      },
+      {
+        'id': '8',
+        'surname': 'NTSHUNTSHE',
+        'firstName': 'THANDUXOLO',
+        'cellphone': '0833457370',
+        'email': 'ntshuntshethanduxolo@gmail.com',
+      },
+      {
+        'id': '9',
+        'surname': 'BOOYSEN',
+        'firstName': 'TERRY',
+        'cellphone': '0835628589',
+        'email': 'booysentm@gmail.com',
+      },
+      {
+        'id': '10',
+        'surname': 'MOLYNEUX',
+        'firstName': 'ALAN',
+        'cellphone': '0824287980',
+        'email': 'molyneuxalan@hotmail.com',
+      },
+      {
+        'id': '11',
+        'surname': 'TSHIKITA',
+        'firstName': 'MOEKETSI',
+        'cellphone': '0839507845',
+        'email': 'moeketsitshikita@yahoo.co.za',
+      },
+      {
+        'id': '12',
+        'surname': 'NGWANE',
+        'firstName': 'ORAPELENG',
+        'cellphone': '0734139965',
+        'email': 'totoraps@gmail.com',
+      },
+      {
+        'id': '13',
+        'surname': 'MABITLE',
+        'firstName': 'WELCOME',
+        'cellphone': null,
+        'email': null,
+      },
+      {
+        'id': '14',
+        'surname': 'MOLEFI',
+        'firstName': 'MORATSHWANYANE',
+        'cellphone': '0616074478',
+        'email': 'molefimora@gmail.com',
+      },
+      {
+        'id': '15',
+        'surname': 'SELEBALO',
+        'firstName': 'MOLATLHEGI',
+        'cellphone': '0837259527',
+        'email': 'cselebalo@yahoo.com',
+      },
+      {
+        'id': '16',
+        'surname': 'TSHABALALA',
+        'firstName': 'MZIMKHULU',
+        'cellphone': '0760841868',
+        'email': 'ishmael.co.za@gmail.com',
+      },
+      {
+        'id': '17',
+        'surname': 'RADEBE',
+        'firstName': 'SPHIWE',
+        'cellphone': '0781703146',
+        'email': 'sphiweradebe64@gmail.com',
+      },
+      {
+        'id': '18',
+        'surname': 'SEITSHIRO',
+        'firstName': 'MMATU',
+        'cellphone': '0838094218',
+        'email': 'kelebogileseitshiro@gmail.com',
+      },
+      {
+        'id': '19',
+        'surname': 'DAVID',
+        'firstName': 'GERTZE',
+        'cellphone': '0814239490',
+        'email': 'davidgertze@gmail.com',
+      },
+      {
+        'id': '20',
+        'surname': 'TAU',
+        'firstName': 'MOLEFI',
+        'cellphone': '0837092012',
+        'email': 'tau.molefi@yahoo.com',
+      },
+      {
+        'id': '21',
+        'surname': 'MANAMELA',
+        'firstName': 'THUSHO',
+        'cellphone': '0721484933',
+        'email': 'thushommaphuti@yahoo.com',
+      },
+      {
+        'id': '22',
+        'surname': 'STEYN',
+        'firstName': 'ROXANNE',
+        'cellphone': '0795450273',
+        'email': 'roxfrog@gmail.com',
+      },
+      {
+        'id': '23',
+        'surname': 'SEKHEJANE',
+        'firstName': 'MOAGI',
+        'cellphone': '832929655',
+        'email': 'msekhejane@gmail.com',
+      },
+      {
+        'id': '24',
+        'surname': 'MTHOMBENI',
+        'firstName': 'ZACHARIA',
+        'cellphone': '0829765288',
+        'email': 'sakimtho@gmail.com',
+      },
+      {
+        'id': '25',
+        'surname': 'MOEMA',
+        'firstName': 'EDITH',
+        'cellphone': '0761865246',
+        'email': 'notty.moema@yahoo.co.uk',
+      },
+      {
+        'id': '26',
+        'surname': 'RADEBE',
+        'firstName': 'ZAKHELE',
+        'cellphone': '0820797965',
+        'email': 'radebeze@gmail.com',
+      },
+      {
+        'id': '27',
+        'surname': 'NGWENYA',
+        'firstName': 'MBONGENI',
+        'cellphone': '0746293111',
+        'email': 'mbongenivcngwenya@gmail.com',
+      },
+      {
+        'id': '28',
+        'surname': 'VILAKAZI',
+        'firstName': 'BONGANI',
+        'cellphone': null,
+        'email': null,
+      },
+      {
+        'id': '29',
+        'surname': 'MANNE',
+        'firstName': 'BURNETT',
+        'cellphone': '0798519162',
+        'email': 'burnettmmamolelemanne@gmail.com',
+      },
+      {
+        'id': '30',
+        'surname': 'SEEKOEI',
+        'firstName': 'MOSIGA',
+        'cellphone': '0732170823',
+        'email': 'kubu.seekoei@gmail.com',
+      },
+      {
+        'id': '31',
+        'surname': 'KGOTLE',
+        'firstName': 'THLAOLE',
+        'cellphone': '0723090869',
+        'email': 'kgotletj@gmail.com',
+      },
+      {
+        'id': '32',
+        'surname': 'NTWAGAE',
+        'firstName': 'JOHANNES',
+        'cellphone': '0824306965',
+        'email': 'jsntwagae@gmail.com',
+      },
+      {
+        'id': '33',
+        'surname': 'MOEKETSI',
+        'firstName': 'ELISHA',
+        'cellphone': '0837371206',
+        'email': 'moeketsi.me@gmail.com',
+      },
+      {
+        'id': '34',
+        'surname': 'MADUMO',
+        'firstName': 'PETRUS',
+        'cellphone': '0723986960',
+        'email': 'madumop@yahoo.co',
+      },
+      {
+        'id': '35',
+        'surname': 'DITHUGE',
+        'firstName': 'THOKWANE',
+        'cellphone': '0722619446',
+        'email': 'dithuge@gmail.com',
+      },
+      {
+        'id': '36',
+        'surname': 'MONAGENG',
+        'firstName': 'LETHULE',
+        'cellphone': '0732628951',
+        'email': 'revmonageng@gmail.com',
+      },
+      {
+        'id': '37',
+        'surname': 'DIETSISO',
+        'firstName': 'MOKGETHI',
+        'cellphone': '0835116250',
+        'email': 'mokgethidietsiso@telkom.net',
+      },
+    ];
+
+    final appointments = [
+      {'ministerId': '1', 'societyId': '1', 'categoryId': '1'},
+      {'ministerId': '2', 'societyId': '1', 'categoryId': '2'},
+      {'ministerId': '3', 'societyId': '7', 'categoryId': '2'},
+      {'ministerId': '4', 'societyId': '14', 'categoryId': '2'},
+      {'ministerId': '5', 'societyId': '18', 'categoryId': '2'},
+      {'ministerId': '6', 'societyId': '24', 'categoryId': '2'},
+      {'ministerId': '7', 'societyId': '25', 'categoryId': '4'},
+      {'ministerId': '8', 'societyId': '26', 'categoryId': '2'},
+      {'ministerId': '9', 'societyId': '27', 'categoryId': '2'},
+      {'ministerId': '10', 'societyId': '30', 'categoryId': '2'},
+      {'ministerId': '11', 'societyId': '33', 'categoryId': '2'},
+      {'ministerId': '12', 'societyId': '35', 'categoryId': '2'},
+      {'ministerId': '13', 'societyId': '36', 'categoryId': '2'},
+      {'ministerId': '14', 'societyId': '38', 'categoryId': '2'},
+      {'ministerId': '15', 'societyId': '39', 'categoryId': '2'},
+      {'ministerId': '16', 'societyId': '40', 'categoryId': '2'},
+      {'ministerId': '17', 'societyId': '41', 'categoryId': '2'},
+      {'ministerId': '18', 'societyId': '43', 'categoryId': '2'},
+      {'ministerId': '19', 'societyId': '46', 'categoryId': '2'},
+      {'ministerId': '20', 'societyId': '49', 'categoryId': '2'},
+      {'ministerId': '21', 'societyId': '50', 'categoryId': '3'},
+      {'ministerId': '22', 'societyId': '51', 'categoryId': '4'},
+      {'ministerId': '23', 'societyId': '52', 'categoryId': '5'},
+      {'ministerId': '24', 'societyId': '53', 'categoryId': '2'},
+      {'ministerId': '25', 'societyId': '54', 'categoryId': '2'},
+      {'ministerId': '26', 'societyId': '55', 'categoryId': '2'},
+      {'ministerId': '27', 'societyId': '57', 'categoryId': '2'},
+      {'ministerId': '29', 'societyId': '58', 'categoryId': '2'},
+      {'ministerId': '30', 'societyId': '59', 'categoryId': '2'},
+      {'ministerId': '31', 'societyId': '60', 'categoryId': '2'},
+      {'ministerId': '32', 'societyId': '61', 'categoryId': '2'},
+      {'ministerId': '33', 'societyId': '62', 'categoryId': '2'},
+      {'ministerId': '34', 'societyId': '63', 'categoryId': '2'},
+      {'ministerId': '35', 'societyId': '64', 'categoryId': '2'},
+      {'ministerId': '36', 'societyId': '65', 'categoryId': '2'},
+      {'ministerId': '37', 'societyId': '68', 'categoryId': '2'},
+    ];
+
+    final db = FirebaseFirestore.instance;
+    final batch = db.batch();
+
+    for (final d in districts) {
+      batch.set(db.collection('districts').doc(d['id'] as String), {
+        'name': d['name'],
+      });
+    }
+    for (final c in categories) {
+      batch.set(db.collection('categories').doc(c['id'] as String), {
+        'name': c['name'],
+      });
+    }
+    for (final c in circuits) {
+      batch.set(db.collection('circuits').doc(c['id'] as String), {
+        'code': c['code'],
+        'name': c['name'],
+        'districtId': '1',
+      });
+    }
+    for (final s in societies) {
+      batch.set(db.collection('societies').doc(s['id'] as String), {
+        'name': s['name'],
+        'circuitId': s['circuitId'],
+      });
+    }
+    for (final m in ministers) {
+      batch.set(db.collection('ministers').doc(m['id'] as String), {
+        'surname': m['surname'],
+        'firstName': m['firstName'],
+        'cellphone': m['cellphone'],
+        'email': m['email'],
+      });
+    }
+    for (final a in appointments) {
+      final id = '${a['ministerId']}_${a['societyId']}_${a['categoryId']}';
+      batch.set(db.collection('appointments').doc(id), {
+        'ministerId': a['ministerId'],
+        'societyId': a['societyId'],
+        'categoryId': a['categoryId'],
+        'isActive': true,
+      });
+    }
+
+    await batch.commit();
+
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Seeded circuits, societies & ministers directory!'),
         ),
       );
     }

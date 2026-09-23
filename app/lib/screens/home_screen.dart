@@ -28,6 +28,7 @@ import 'transactions_screen.dart';
 import 'login_screen.dart';
 import '../services/user_service.dart';
 import '../services/presence_service.dart';
+import '../services/app_config_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -64,6 +65,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   double walletBalance = 0.0;
   bool _isLoadingWallet = true;
+  Map<String, bool> _mobileServiceFlags = AppConfigService.defaults;
 
   late final PageController _tilesPageController;
   int _currentTileIndex = 0;
@@ -80,8 +82,14 @@ class _HomeScreenState extends State<HomeScreen>
     _loadUserProfile();
     _loadDailyScripture();
     _loadWalletBalance();
+    _loadMobileServiceFlags();
     WidgetsBinding.instance.addObserver(this);
     PresenceService.goOnlineForNewSession();
+  }
+
+  Future<void> _loadMobileServiceFlags() async {
+    final flags = await AppConfigService.getMobileServiceFlags();
+    if (mounted) setState(() => _mobileServiceFlags = flags);
   }
 
   @override
@@ -295,15 +303,17 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       ),
       bottomNavigationBar: _buildBottomNav(),
-      floatingActionButton: Transform.translate(
-        offset: const Offset(0, 20),
-        child: _LufunoFab(
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ChatScreen()),
-          ),
-        ),
-      ),
+      floatingActionButton: _mobileServiceFlags['chatEnabled'] == true
+          ? Transform.translate(
+              offset: const Offset(0, 20),
+              child: _LufunoFab(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ChatScreen()),
+                ),
+              ),
+            )
+          : null,
     );
   }
 
@@ -598,39 +608,44 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildMarketplace() {
     final utilityTiles = [
-      {
-        'title': 'Airtime Top-Up',
-        'subtitle': 'Instant recharge for MTN, Vodacom, Cell C & Telkom',
-        'icon': Icons.phone_android_rounded,
-        'color': const Color(0xFFFB8B24),
-        'badge': 'INSTANT',
-        'onTap': () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const BuyAirtimeScreen()),
-        ),
-      },
-      {
-        'title': 'Data Bundles',
-        'subtitle': 'High-speed internet bundles for all SA networks',
-        'icon': Icons.wifi_rounded,
-        'color': const Color(0xFFE55B13),
-        'badge': 'DATA',
-        'onTap': () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const BuyDataScreen()),
-        ),
-      },
-      {
-        'title': 'Electricity Tokens',
-        'subtitle': 'Prepaid electricity tokens for Eskom & Municipal meters',
-        'icon': Icons.bolt_rounded,
-        'color': const Color(0xFFFB8B24),
-        'badge': 'PREPAID',
-        'onTap': () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const BuyElectricityScreen()),
-        ),
-      },
+      if (_mobileServiceFlags['airtimeEnabled'] == true)
+        {
+          'title': 'Airtime Top-Up',
+          'subtitle': 'Instant recharge for MTN, Vodacom, Cell C & Telkom',
+          'icon': Icons.phone_android_rounded,
+          'color': const Color(0xFFFB8B24),
+          'badge': 'INSTANT',
+          'onTap': () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const BuyAirtimeScreen()),
+          ),
+        },
+      if (_mobileServiceFlags['dataEnabled'] == true)
+        {
+          'title': 'Data Bundles',
+          'subtitle': 'High-speed internet bundles for all SA networks',
+          'icon': Icons.wifi_rounded,
+          'color': const Color(0xFFE55B13),
+          'badge': 'DATA',
+          'onTap': () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const BuyDataScreen()),
+          ),
+        },
+      if (_mobileServiceFlags['electricityEnabled'] == true)
+        {
+          'title': 'Electricity Tokens',
+          'subtitle': 'Prepaid electricity tokens for Eskom & Municipal meters',
+          'icon': Icons.bolt_rounded,
+          'color': const Color(0xFFFB8B24),
+          'badge': 'PREPAID',
+          'onTap': () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const BuyElectricityScreen(),
+            ),
+          ),
+        },
       {
         'title': 'E-Market',
         'subtitle': 'Shop digital goods and services in one place',
@@ -678,112 +693,118 @@ class _HomeScreenState extends State<HomeScreen>
                   child: Stack(
                     children: [
                       AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeOut,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(18),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF3B0D11), Color(0xFF5A151C)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF3B0D11).withValues(alpha: 0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                      border: isSelected
-                          ? null
-                          : Border.all(
-                              color: Colors.white.withValues(alpha: 0.08),
-                              width: 0.8,
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOut,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(18),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF3B0D11), Color(0xFF5A151C)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(
+                                0xFF3B0D11,
+                              ).withValues(alpha: 0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 5),
                             ),
-                    ),
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            tile['icon'] as IconData,
-                            color: color,
-                            size: 26,
-                          ),
+                          ],
+                          border: isSelected
+                              ? null
+                              : Border.all(
+                                  color: Colors.white.withValues(alpha: 0.08),
+                                  width: 0.8,
+                                ),
                         ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Row(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                tile['icon'] as IconData,
+                                color: color,
+                                size: 26,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Flexible(
-                                    child: Text(
-                                      tile['title'] as String,
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  if (tile['badge'] != null) ...[
-                                    const SizedBox(width: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: color.withValues(alpha: 0.3),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        tile['badge'] as String,
-                                        style: const TextStyle(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                          letterSpacing: 0.4,
+                                  Row(
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          tile['title'] as String,
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
+                                      if (tile['badge'] != null) ...[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: color.withValues(alpha: 0.3),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            tile['badge'] as String,
+                                            style: const TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                              letterSpacing: 0.4,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    tile['subtitle'] as String,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.white.withValues(
+                                        alpha: 0.7,
+                                      ),
+                                      height: 1.3,
                                     ),
-                                  ],
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ],
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                tile['subtitle'] as String,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.white.withValues(alpha: 0.7),
-                                  height: 1.3,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              size: 20,
+                              color: Colors.white.withValues(alpha: 0.6),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Icon(
-                          Icons.chevron_right_rounded,
-                          size: 20,
-                          color: Colors.white.withValues(alpha: 0.6),
-                        ),
-                      ],
-                    ),
-                  ),
+                      ),
                       if (isSelected)
                         Positioned.fill(
                           child: IgnorePointer(
@@ -2415,10 +2436,7 @@ class _ShinyBorderPainter extends CustomPainter {
   static const _accent = Color(0xFFFB8B24);
   static const _strokeWidth = 1.6;
 
-  _ShinyBorderPainter({
-    required this.progress,
-    required this.borderRadius,
-  });
+  _ShinyBorderPainter({required this.progress, required this.borderRadius});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2428,10 +2446,7 @@ class _ShinyBorderPainter extends CustomPainter {
       size.width - _strokeWidth,
       size.height - _strokeWidth,
     );
-    final rrect = RRect.fromRectAndRadius(
-      rect,
-      Radius.circular(borderRadius),
-    );
+    final rrect = RRect.fromRectAndRadius(rect, Radius.circular(borderRadius));
 
     final gradient = SweepGradient(
       transform: GradientRotation(progress * 2 * math.pi),

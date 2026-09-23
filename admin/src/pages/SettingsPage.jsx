@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { FiSave, FiKey, FiCreditCard, FiZap, FiBarChart2, FiGlobe } from 'react-icons/fi';
+import { FiSave, FiKey, FiCreditCard, FiZap, FiBarChart2, FiGlobe, FiSmartphone } from 'react-icons/fi';
 
 const SECTIONS = [
   {
@@ -31,7 +31,7 @@ const SECTIONS = [
     icon: FiBarChart2,
     fields: [
       { key: 'analyticsId', label: 'Google Analytics Measurement ID', type: 'text', placeholder: 'G-XXXXXXXXXX' },
-      { key: 'youtubApiKey', label: 'YouTube Data API Key', type: 'password', placeholder: 'YouTube API key for Tingungu TV' },
+      { key: 'youtubeApiKey', label: 'YouTube Data API Key', type: 'password', placeholder: 'YouTube API key for Tingungu TV' },
       { key: 'youtubePlaylistId', label: 'YouTube Playlist ID', type: 'text', placeholder: 'Playlist ID for Tingungu TV' },
     ],
   },
@@ -44,6 +44,19 @@ const SECTIONS = [
       { key: 'supportEmail', label: 'Support Email', type: 'email', placeholder: 'support@tingungu.co.za' },
       { key: 'websiteUrl', label: 'Website URL', type: 'text', placeholder: 'https://www.tingungu.co.za' },
       { key: 'maintenanceMode', label: 'Maintenance Mode', type: 'checkbox' },
+    ],
+  },
+  {
+    id: 'mobileServices',
+    label: 'Mobile Services',
+    icon: FiSmartphone,
+    fields: [
+      { key: 'airtimeEnabled', label: 'Airtime Purchases Enabled', type: 'checkbox' },
+      { key: 'dataEnabled', label: 'Data Bundles Enabled', type: 'checkbox' },
+      { key: 'electricityEnabled', label: 'Electricity Tokens Enabled', type: 'checkbox' },
+      { key: 'chatEnabled', label: 'Lufuno Assistant Enabled', type: 'checkbox' },
+      { key: 'xpressiveCultureUrl', label: 'Xpressive Culture URL', type: 'url', placeholder: 'https://wa.me/c/...' },
+      { key: 'fempreneursUrl', label: 'Fempreneurs URL', type: 'url', placeholder: 'https://fempreneurs.co.za/...' },
     ],
   },
 ];

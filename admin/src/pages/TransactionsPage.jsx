@@ -41,7 +41,7 @@ export default function TransactionsPage() {
     return () => unsubs.forEach(u => u());
   }, []);
 
-  const types = ['all', 'giving', 'topup', 'airtime'];
+  const types = ['all', 'giving', 'topup', 'airtime', 'data', 'electricity'];
 
   const filtered = transactions.filter(t => {
     const typeLower = (t.type || '').toLowerCase();

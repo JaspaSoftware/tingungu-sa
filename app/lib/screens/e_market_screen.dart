@@ -1,16 +1,67 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class EMarketScreen extends StatelessWidget {
+class EMarketScreen extends StatefulWidget {
   const EMarketScreen({super.key});
 
-  Future<void> _openLink(BuildContext context, String url, String errorMessage) async {
+  @override
+  State<EMarketScreen> createState() => _EMarketScreenState();
+}
+
+class _EMarketScreenState extends State<EMarketScreen> {
+  static const _defaultXpressiveCultureUrl = 'https://wa.me/c/27839467882';
+  static const _defaultFempreneursUrl =
+      'https://fempreneurs.co.za/user/xpressive-culture-the-gifting-alchemist/?profiletab=vendor';
+
+  late Future<Map<String, String>> _marketLinks;
+
+  @override
+  void initState() {
+    super.initState();
+    _marketLinks = _loadMarketLinks();
+  }
+
+  Future<Map<String, String>> _loadMarketLinks() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('admin_settings')
+          .doc('config')
+          .get();
+      final services = snapshot.data()?['mobileServices'];
+      if (services is Map<String, dynamic>) {
+        return {
+          'xpressiveCultureUrl':
+              (services['xpressiveCultureUrl'] as String?)?.trim().isNotEmpty ==
+                  true
+              ? services['xpressiveCultureUrl'] as String
+              : _defaultXpressiveCultureUrl,
+          'fempreneursUrl':
+              (services['fempreneursUrl'] as String?)?.trim().isNotEmpty == true
+              ? services['fempreneursUrl'] as String
+              : _defaultFempreneursUrl,
+        };
+      }
+    } catch (_) {
+      // Keep the built-in links available when remote configuration is unavailable.
+    }
+    return {
+      'xpressiveCultureUrl': _defaultXpressiveCultureUrl,
+      'fempreneursUrl': _defaultFempreneursUrl,
+    };
+  }
+
+  Future<void> _openLink(
+    BuildContext context,
+    String url,
+    String errorMessage,
+  ) async {
     final uri = Uri.parse(url);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errorMessage)));
       }
     }
   }
@@ -33,37 +84,44 @@ class EMarketScreen extends StatelessWidget {
           ),
         ),
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            children: [
-              _buildLinkTile(
-                context: context,
-                icon: Icons.storefront_rounded,
-                title: 'Xpressive Culture',
-                subtitle: 'View catalog on WhatsApp',
-                onTap: () => _openLink(
-                  context,
-                  'https://wa.me/c/27839467882',
-                  'Could not open WhatsApp catalog.',
-                ),
+      body: FutureBuilder<Map<String, String>>(
+        future: _marketLinks,
+        builder: (context, snapshot) {
+          final links = snapshot.data ?? const <String, String>{};
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                children: [
+                  _buildLinkTile(
+                    context: context,
+                    icon: Icons.storefront_rounded,
+                    title: 'Xpressive Culture',
+                    subtitle: 'View catalog on WhatsApp',
+                    onTap: () => _openLink(
+                      context,
+                      links['xpressiveCultureUrl'] ??
+                          _defaultXpressiveCultureUrl,
+                      'Could not open WhatsApp catalog.',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildLinkTile(
+                    context: context,
+                    icon: Icons.storefront_rounded,
+                    title: 'Fempreneurs',
+                    subtitle: 'View vendor profile',
+                    onTap: () => _openLink(
+                      context,
+                      links['fempreneursUrl'] ?? _defaultFempreneursUrl,
+                      'Could not open Fempreneurs profile.',
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              _buildLinkTile(
-                context: context,
-                icon: Icons.storefront_rounded,
-                title: 'Fempreneurs',
-                subtitle: 'View vendor profile',
-                onTap: () => _openLink(
-                  context,
-                  'https://fempreneurs.co.za/user/xpressive-culture-the-gifting-alchemist/?profiletab=vendor',
-                  'Could not open Fempreneurs profile.',
-                ),
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }

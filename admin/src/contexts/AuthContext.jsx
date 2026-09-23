@@ -9,6 +9,17 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const devAuthEnabled = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEV_AUTH === 'true';
+
+    if (devAuthEnabled) {
+      setUser({
+        uid: 'local-development-user',
+        email: 'developer@localhost',
+      });
+      setLoading(false);
+      return undefined;
+    }
+
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);

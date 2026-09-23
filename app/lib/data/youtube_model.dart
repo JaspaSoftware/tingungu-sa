@@ -2,6 +2,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 
 class YoutubeVideo {
@@ -34,23 +35,39 @@ class YoutubeVideo {
 }
 
 class YoutubeService {
-  // REPLACE WITH YOUR CREDENTIALS
-  static const String apiKey = 'YOUR_YOUTUBE_API_KEY';
-  static const String playlistId = 'YOUR_PLAYLIST_ID'; // Tingungu TV uploads playlist
+  static const String _defaultApiKey = 'YOUR_YOUTUBE_API_KEY';
+  static const String _defaultPlaylistId = 'YOUR_PLAYLIST_ID';
 
   static const String _baseUrl =
       'https://www.googleapis.com/youtube/v3/playlistItems';
 
   /// Fetch videos from Tingungu TV channel
-  static Future<List<YoutubeVideo>> getChannelVideos({int maxResults = 12}) async {
+  static Future<List<YoutubeVideo>> getChannelVideos({
+    int maxResults = 12,
+  }) async {
     try {
+      final config = await FirebaseFirestore.instance
+          .collection('admin_settings')
+          .doc('config')
+          .get();
+      final google = config.data()?['google'];
+      final apiKey = google is Map<String, dynamic>
+          ? (google['youtubeApiKey'] as String?)?.trim() ?? _defaultApiKey
+          : _defaultApiKey;
+      final playlistId = google is Map<String, dynamic>
+          ? (google['youtubePlaylistId'] as String?)?.trim() ??
+                _defaultPlaylistId
+          : _defaultPlaylistId;
+
+      if (apiKey == _defaultApiKey || playlistId == _defaultPlaylistId) {
+        return [];
+      }
+
       final url = Uri.parse(
         '$_baseUrl?part=snippet&playlistId=$playlistId&maxResults=$maxResults&key=$apiKey&order=date',
       );
 
-      final response = await http
-          .get(url)
-          .timeout(const Duration(seconds: 15));
+      final response = await http.get(url).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

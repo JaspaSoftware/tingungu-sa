@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:pay/pay.dart';
-
+import '../services/payment_api.dart';
 import 'payfast_page.dart';
 
 class TopUpWalletScreen extends StatefulWidget {
@@ -74,22 +70,6 @@ class _TopUpWalletScreenState extends State<TopUpWalletScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(
-                Icons.g_mobiledata,
-                color: Color(0xFFFB8B24),
-                size: 40,
-              ),
-              title: const Text(
-                'Google Pay',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _processGooglePay(amount);
-              },
-            ),
-            const Divider(),
-            ListTile(
               leading: const Icon(Icons.payment, color: Color(0xFFFB8B24)),
               title: const Text(
                 'PayFast',
@@ -97,27 +77,7 @@ class _TopUpWalletScreenState extends State<TopUpWalletScreen> {
               ),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => PayFastWebView(
-                      formData: {
-                        'merchant_id': '10000100',
-                        'merchant_key': '46f0cd694581a',
-                        'return_url': 'https://www.example.com/success',
-                        'cancel_url': 'https://www.example.com/cancel',
-                        'notify_url': 'https://www.example.com/notify',
-                        'name_first': 'John',
-                        'name_last': 'Doe',
-                        'm_payment_id': '01AB',
-                        'amount': amount.toString(),
-                        'item_name': 'Wallet Top Up',
-                        'item_description':
-                            'Tingungu App Wallet Balance Top Up',
-                      },
-                    ),
-                  ),
-                );
+                _startPayFastTopUp(amount);
               },
             ),
           ],
@@ -126,107 +86,24 @@ class _TopUpWalletScreenState extends State<TopUpWalletScreen> {
     );
   }
 
-  final _payClient = Pay({
-    PayProvider.google_pay: PaymentConfiguration.fromJsonString('''{
-        "provider": "google_pay",
-        "data": {
-          "environment": "TEST",
-          "apiVersion": 2,
-          "apiVersionMinor": 0,
-          "allowedPaymentMethods": [
-            {
-              "type": "CARD",
-              "tokenizationSpecification": {
-                "type": "PAYMENT_GATEWAY",
-                "parameters": {
-                  "gateway": "example",
-                  "gatewayMerchantId": "exampleGatewayMerchantId"
-                }
-              },
-              "parameters": {
-                "allowedCardNetworks": ["VISA", "MASTERCARD"],
-                "allowedAuthMethods": ["PAN_ONLY", "CRYPTOGRAM_3DS"],
-                "billingAddressRequired": true,
-                "billingAddressParameters": {
-                  "format": "FULL",
-                  "phoneNumberRequired": true
-                }
-              }
-            }
-          ],
-          "merchantInfo": {
-            "merchantId": "01234567890123456789",
-            "merchantName": "Test Merchant"
-          },
-          "transactionInfo": {
-            "countryCode": "ZA",
-            "currencyCode": "ZAR"
-          }
-        }
-      }'''),
-  });
-
-  Future<void> _processGooglePay(double amount) async {
+  Future<void> _startPayFastTopUp(double amount) async {
     try {
-      final result = await _payClient
-          .showPaymentSelector(PayProvider.google_pay, [
-            PaymentItem(
-              label: 'Wallet Top Up',
-              amount: amount.toStringAsFixed(2),
-              status: PaymentItemStatus.final_price,
-            ),
-          ]);
-
-      // result contains payment token/details.
-      // If we reach here, Google Pay sheet was successful.
-
+      final session = await PaymentApi.startPayFast(
+        amount: amount,
+        purpose: 'topup',
+      );
       if (!mounted) return;
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(color: Color(0xFFFB8B24)),
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PayFastWebView(session: session),
         ),
       );
-
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final docRef = FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid);
-        await FirebaseFirestore.instance.runTransaction((transaction) async {
-          final snapshot = await transaction.get(docRef);
-          if (!snapshot.exists) {
-            throw Exception("User profile not found.");
-          }
-          final double currentBalance =
-              (snapshot.data()?['wallet_balance'] ?? 0.0).toDouble();
-          transaction.update(docRef, {
-            'wallet_balance': currentBalance + amount,
-          });
-        });
-      }
-
-      if (mounted) {
-        Navigator.pop(context); // hide loading
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Top up successful!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context); // return to previous screen
-      }
     } catch (e) {
-      if (kDebugMode) print('Google Pay Error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Payment cancelled or failed.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+      );
     }
   }
 

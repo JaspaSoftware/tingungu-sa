@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
-import '../services/purchase_airtime_service.dart';
-import '../components/payment_method_selector.dart';
+import '../services/payment_api.dart';
 
 class BuyAirtimeScreen extends StatefulWidget {
   const BuyAirtimeScreen({super.key});
@@ -280,78 +279,71 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
     );
   }
 
-  void _showPaymentMethodSheet() {
-    final amount = double.tryParse(_amountController.text) ?? 0.0;
-    showModalBottomSheet(
+  Future<void> _showPaymentMethodSheet() async {
+    final amount = int.tryParse(_amountController.text) ?? 0;
+    final confirmed = await showDialog<bool>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => PaymentMethodSelector(
-        amount: amount,
-        title: 'Airtime Top-up',
-        description: '$_selectedNetwork Airtime for ${_phoneController.text}',
-        onPaymentSuccess: (method) {
-          Navigator.pop(context);
-          _processAirtimePurchase(method);
-        },
-        onPaymentFailed: () => Navigator.pop(context),
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm purchase'),
+        content: Text(
+          'Buy R$amount $_selectedNetwork airtime for ${_phoneController.text} using your Tingungu Wallet?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Buy'),
+          ),
+        ],
       ),
     );
+    if (confirmed == true) await _processAirtimePurchase();
   }
 
-  void _processAirtimePurchase(String method) async {
-    final airtimeService = PurchaseAirtimeService();
+  Future<void> _processAirtimePurchase() async {
     final productCode = _networkProductCodes[_selectedNetwork] ?? 101;
     final amount = int.tryParse(_amountController.text) ?? 0;
-    final mobileNumber = _phoneController.text;
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      builder: (context) => const AlertDialog(
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 20),
-            Text('Processing Airtime via $method...'),
+            CircularProgressIndicator(),
+            SizedBox(height: 20),
+            Text('Processing airtime...'),
           ],
         ),
       ),
     );
 
+    String message;
+    var ok = false;
     try {
-      final result = await airtimeService.purchaseAirtime(
-        productCode: productCode,
+      final delivered = await PaymentApi.buyAirtime(
         amount: amount,
-        mobileNumber: mobileNumber,
+        productCode: productCode,
+        mobileNumber: _phoneController.text,
       );
-
-      if (!mounted) return;
-      Navigator.pop(context);
-
-      if (result['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('✓ Airtime added successfully via $method!')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('✗ ${result['message'] ?? 'Purchase failed'}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      ok = delivered;
+      message = delivered
+          ? 'Airtime added successfully!'
+          : 'We could not confirm the purchase yet. It will be checked and refunded if it did not go through.';
     } catch (e) {
-      if (!mounted) return;
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('✗ Error: $e'), backgroundColor: Colors.red),
-      );
+      message = e.toString();
     }
-  }
 
+    if (!mounted) return;
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: ok ? null : Colors.red),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(

@@ -70,3 +70,4 @@ api/*.pem
 website/downloads/
 api/firestore_seed.js
 cpanel-deploy.zip
+node_modules

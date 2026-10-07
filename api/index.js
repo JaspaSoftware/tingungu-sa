@@ -4,13 +4,17 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const { requireAuth, requireAdmin } = require('./auth');
+const { router: paymentsRouter } = require('./payments');
+const { router: airtimeRouter, startReconciler } = require('./airtime');
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 app.use(express.json());
-app.use(cors());
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean);
+app.use(cors(allowedOrigins.length ? { origin: allowedOrigins } : undefined));
 
 // Simple Logger
 app.use((req, res, next) => {
@@ -18,40 +22,16 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health Check
+// Health Check (public, no data exposed)
 app.get('/health', async (req, res) => {
   try {
     const db = await getPool();
-    
-    // Test connection
     await db.query('SELECT 1');
-
-    // Fetch sample data
-    const [districts] = await db.query('SELECT * FROM districts LIMIT 2');
-    const [circuits] = await db.query('SELECT * FROM circuits LIMIT 2');
-    const [societies] = await db.query('SELECT * FROM societies LIMIT 2');
-    const [ministers] = await db.query('SELECT * FROM persons LIMIT 2');
-
-    res.json({
-      status: 'API is running',
-      database: 'Connected',
-      db_host: process.env.DB_HOST,
-      samples: {
-        districts,
-        circuits,
-        societies,
-        ministers
-      }
-    });
+    res.json({ status: 'API is running', database: 'Connected' });
   } catch (err) {
-    res.status(500).json({
-      status: 'API Error',
-      database: 'Disconnected',
-      error: err.message
-    });
+    res.status(500).json({ status: 'API Error', database: 'Disconnected' });
   }
 });
-
 app.get('/', (req, res) => {
   res.redirect('/health');
 });
@@ -76,6 +56,18 @@ async function getPool() {
   }
   return pool;
 }
+
+// Payment routes enforce their own auth (the PayFast notification is unauthenticated by design).
+app.use('/api/payments', paymentsRouter);
+app.use('/api/airtime', airtimeRouter);
+
+// Every /api route needs a valid Firebase ID token. Signed-in members may read
+// the church directory; everything else requires the admin custom claim.
+const directoryReads = /^\/(districts|circuits|societies)(\/\d+\/societies)?\/?$/;
+app.use('/api', requireAuth, (req, res, next) => {
+  if (req.method === 'GET' && directoryReads.test(req.path)) return next();
+  requireAdmin(req, res, next);
+});
 
 // Routes
 app.get('/api/districts', async (req, res) => {
@@ -266,6 +258,7 @@ app.get('/api/stats', async (req, res) => {
 });
 
 app.listen(PORT, () => {
+  startReconciler();
   console.log(`Server running on port ${PORT}`);
   console.log(`Connected to database host: ${process.env.DB_HOST}`);
   // Redeploy trigger

@@ -1,7 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../utils/avatar_utils.dart';
+import '../services/public_profile_service.dart';
 import 'society_selection_screen.dart';
 import 'login_screen.dart';
 
@@ -77,6 +78,9 @@ class _ProfilePageState extends State<ProfilePage> {
           .collection('users')
           .doc(user?.uid)
           .update({field: newValue.trim()});
+      if (field == 'displayname' || field == 'display_name') {
+        await PublicProfileService.update({'displayname': newValue.trim()});
+      }
       _checkProfileCompletion();
     }
   }

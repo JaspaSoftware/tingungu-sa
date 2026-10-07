@@ -1,6 +1,7 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/public_profile_service.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/user_service.dart';
@@ -85,6 +86,7 @@ class AvatarUtils {
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'avatar': avatarValue,
       }, SetOptions(merge: true));
+      await PublicProfileService.update({'avatar': avatarValue});
 
       // 2. Sync with MySQL backend in background asynchronously without blocking UI
       UserService.updateUserProfile(

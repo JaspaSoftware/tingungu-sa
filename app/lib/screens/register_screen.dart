@@ -300,7 +300,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             'society': '',
             'dob': '',
             'profile_completed': false,
-            'wallet_balance': 0.0,
             'createdAt': FieldValue.serverTimestamp(),
           });
         }

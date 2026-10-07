@@ -42,7 +42,7 @@ class PresenceService {
   static DocumentReference<Map<String, dynamic>>? _userDoc() {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return null;
-    return FirebaseFirestore.instance.collection('users').doc(uid);
+    return FirebaseFirestore.instance.collection('public_profiles').doc(uid);
   }
 
   static Future<void> _update(Map<String, dynamic> data) async {

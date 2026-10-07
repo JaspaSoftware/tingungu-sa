@@ -28,6 +28,7 @@ import 'transactions_screen.dart';
 import 'login_screen.dart';
 import '../services/user_service.dart';
 import '../services/presence_service.dart';
+import '../services/public_profile_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -83,7 +84,9 @@ class _HomeScreenState extends State<HomeScreen>
     _loadDailyScripture();
     _loadWalletBalance();
     WidgetsBinding.instance.addObserver(this);
-    PresenceService.goOnlineForNewSession();
+    PublicProfileService.syncFromPrivateProfile().whenComplete(
+      PresenceService.goOnlineForNewSession,
+    );
   }
 
   @override
@@ -1142,22 +1145,6 @@ class _HomeScreenState extends State<HomeScreen>
                         color: Color(0xFFFB8B24),
                       ),
                       title: const Text(
-                        'Seed Societies Data',
-                        style: TextStyle(fontSize: 13),
-                      ),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _seedSocietiesData();
-                      },
-                    ),
-                    ListTile(
-                      dense: true,
-                      leading: const Icon(
-                        Icons.refresh,
-                        size: 18,
-                        color: Color(0xFFFB8B24),
-                      ),
-                      title: const Text(
                         'Seed Circuits & Ministers Data',
                         style: TextStyle(fontSize: 13),
                       ),
@@ -2191,82 +2178,6 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  Future<void> _seedSocietiesData() async {
-    showDialog(
-      context: context,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-    final societies = [
-      {
-        "name": "Zion Society",
-        "circuit": "Pretoria Central",
-        "location": "Pretoria",
-        "leader": "Rev. Smith",
-      },
-      {
-        "name": "Ebenezer Society",
-        "circuit": "Johannesburg East",
-        "location": "Bedfordview",
-        "leader": "Rev. Ndlovu",
-      },
-      {
-        "name": "Central Methodist",
-        "circuit": "Cape Town Central",
-        "location": "Cape Town",
-        "leader": "Rev. Botha",
-      },
-      {
-        "name": "Bethel Society",
-        "circuit": "Durban Coastal",
-        "location": "Durban",
-        "leader": "Rev. Gwala",
-      },
-      {
-        "name": "Wesley Society",
-        "circuit": "Port Elizabeth South",
-        "location": "Gqeberha",
-        "leader": "Rev. Jacobs",
-      },
-    ];
-
-    final existingSnapshot = await FirebaseFirestore.instance
-        .collection('societies')
-        .get();
-    final existingNames = existingSnapshot.docs
-        .map(
-          (doc) => (doc.data()['name'] as String? ?? '').trim().toLowerCase(),
-        )
-        .toSet();
-
-    final batch = FirebaseFirestore.instance.batch();
-    var addedCount = 0;
-    for (var s in societies) {
-      final name = (s['name'] as String).trim().toLowerCase();
-      if (existingNames.contains(name)) continue;
-      final docRef = FirebaseFirestore.instance.collection('societies').doc();
-      batch.set(docRef, {...s, "createdAt": FieldValue.serverTimestamp()});
-      addedCount++;
-    }
-    if (addedCount > 0) {
-      await batch.commit();
-    }
-    if (mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            addedCount > 0
-                ? 'Seeded $addedCount new societies!'
-                : 'Societies already seeded.',
-          ),
-        ),
-      );
-    }
-  }
-
-  /// Seeds the Circuits & Societies info hub directory (districts, circuits,
-  /// societies, ministers, categories, appointments) directly from the app,
-  /// using deterministic doc IDs so re-running never creates duplicates.
   Future<void> _seedCircuitsData() async {
     showDialog(
       context: context,

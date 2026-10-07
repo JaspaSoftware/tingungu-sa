@@ -58,11 +58,21 @@ const PAGE_COMPONENTS = {
 function AdminApp() {
   const [activePage, setActivePage] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, isAdmin, logout } = useAuth();
   const info = PAGE_TITLES[activePage] || {};
   const PageComponent = PAGE_COMPONENTS[activePage] || Dashboard;
 
   if (!user) return <LoginPage />;
+
+  if (!isAdmin) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, textAlign: 'center', padding: 24 }}>
+        <h2>Access denied</h2>
+        <p>{user.email} is not authorised to use the admin portal.</p>
+        <button className="btn btn-primary" onClick={logout}>Sign out</button>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-layout">

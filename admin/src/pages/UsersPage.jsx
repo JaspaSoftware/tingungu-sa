@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { FiUsers } from 'react-icons/fi';
 import { format } from 'date-fns';
 import { API_BASE_URL } from '../config';
+import { apiFetch } from '../api';
 
 function Modal({ title, onClose, onSave, loading, children }) {
   return (
@@ -11,7 +12,7 @@ function Modal({ title, onClose, onSave, loading, children }) {
       <div className="modal">
         <div className="modal-header">
           <h3>{title}</h3>
-          <button className="btn-close" onClick={onClose}>✕</button>
+          <button className="btn-close" onClick={onClose}>âœ•</button>
         </div>
         <div className="modal-body">{children}</div>
         <div className="modal-footer">
@@ -89,7 +90,7 @@ export default function UsersPage() {
       // Sync with MySQL database
       if (selectedUser.email) {
         try {
-          await fetch(`${API_BASE_URL}/users/${encodeURIComponent(selectedUser.email)}`, {
+          await apiFetch(`${API_BASE_URL}/users/${encodeURIComponent(selectedUser.email)}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -142,7 +143,7 @@ export default function UsersPage() {
       // 2. Delete from MySQL
       if (selectedUser.email) {
         try {
-          await fetch(`${API_BASE_URL}/users/${encodeURIComponent(selectedUser.email)}`, {
+          await apiFetch(`${API_BASE_URL}/users/${encodeURIComponent(selectedUser.email)}`, {
             method: 'DELETE'
           });
         } catch (apiErr) {
@@ -208,12 +209,12 @@ export default function UsersPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div className="avatar">{initials(u)}</div>
                         <div>
-                          <div style={{ fontWeight: 600, fontSize: 14 }}>{u.displayname || '—'}</div>
+                          <div style={{ fontWeight: 600, fontSize: 14 }}>{u.displayname || 'â€”'}</div>
                           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{u.id.slice(0, 8)}...</div>
                         </div>
                       </div>
                     </td>
-                    <td>{u.email || '—'}</td>
+                    <td>{u.email || 'â€”'}</td>
                     <td>
                       <span className={`badge ${roleBadgeColor(u.role)}`} style={{ textTransform: 'capitalize' }}>
                         {u.role || 'member'}
@@ -238,7 +239,7 @@ export default function UsersPage() {
                       </div>
                     </td>
                     <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
-                      {u.createdAt?.toDate ? format(u.createdAt.toDate(), 'dd MMM yyyy') : '—'}
+                      {u.createdAt?.toDate ? format(u.createdAt.toDate(), 'dd MMM yyyy') : 'â€”'}
                     </td>
                   </tr>
                 ))}
@@ -278,7 +279,7 @@ export default function UsersPage() {
             </div>
             <div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{selectedUser.displayname || '—'}</h4>
+                <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{selectedUser.displayname || 'â€”'}</h4>
                 {selectedUser.suspended && <span className="badge badge-danger">Suspended</span>}
               </div>
             </div>
@@ -298,7 +299,7 @@ export default function UsersPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 12px', marginBottom: 24 }}>
             <div className="info-group">
               <label style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Email Address</label>
-              <div style={{ fontSize: 14, fontWeight: 500, marginTop: 4, wordBreak: 'break-all' }}>{selectedUser.email || '—'}</div>
+              <div style={{ fontSize: 14, fontWeight: 500, marginTop: 4, wordBreak: 'break-all' }}>{selectedUser.email || 'â€”'}</div>
             </div>
             <div className="info-group">
               <label style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Society</label>
@@ -319,12 +320,12 @@ export default function UsersPage() {
             <div className="info-group">
               <label style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Date Joined</label>
               <div style={{ fontSize: 14, fontWeight: 500, marginTop: 4 }}>
-                {selectedUser.createdAt?.toDate ? format(selectedUser.createdAt.toDate(), 'dd MMM yyyy HH:mm') : '—'}
+                {selectedUser.createdAt?.toDate ? format(selectedUser.createdAt.toDate(), 'dd MMM yyyy HH:mm') : 'â€”'}
               </div>
             </div>
             <div className="info-group">
               <label style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Cellphone</label>
-              <div style={{ fontSize: 14, fontWeight: 500, marginTop: 4 }}>{selectedUser.cellphone || '—'}</div>
+              <div style={{ fontSize: 14, fontWeight: 500, marginTop: 4 }}>{selectedUser.cellphone || 'â€”'}</div>
             </div>
           </div>
 

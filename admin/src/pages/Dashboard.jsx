@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { FiUsers, FiDollarSign, FiBell, FiVideo, FiTrendingUp, FiHeart, FiShoppingBag, FiMessageSquare } from 'react-icons/fi';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { API_BASE_URL } from '../config';
+import { apiFetch } from '../api';
 
 const COLORS = ['#3B0D11', '#FB8B24', '#10b981', '#3b82f6', '#8b5cf6'];
 
@@ -35,7 +36,7 @@ export default function Dashboard() {
     // MySQL Stats
     const fetchSqlStats = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/stats`, { cache: 'no-cache' });
+        const res = await apiFetch(`${API_BASE_URL}/stats`, { cache: 'no-cache' });
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
         setSqlStats(data);
@@ -161,7 +162,7 @@ export default function Dashboard() {
 
   const stats = [
     {
-      label: 'Total Users', value: userCount ?? '—',
+      label: 'Total Users', value: userCount ?? 'â€”',
       icon: FiUsers, color: '#3B0D11', bg: 'rgba(59,13,17,0.08)',
     },
     {
@@ -177,11 +178,11 @@ export default function Dashboard() {
       icon: FiVideo, color: '#3b82f6', bg: '#dbeafe',
     },
     {
-      label: 'Active Notices', value: noticeCount ?? '—',
+      label: 'Active Notices', value: noticeCount ?? 'â€”',
       icon: FiBell, color: '#f59e0b', bg: '#fef3c7',
     },
     {
-      label: 'Media Videos', value: mediaCount ?? '—',
+      label: 'Media Videos', value: mediaCount ?? 'â€”',
       icon: FiVideo, color: '#3b82f6', bg: '#dbeafe',
     },
 
@@ -196,7 +197,7 @@ export default function Dashboard() {
       <div className="page-header">
         <div>
           <h1>Dashboard</h1>
-          <p>Welcome back — here's what's happening with Tingungu</p>
+          <p>Welcome back â€” here's what's happening with Tingungu</p>
         </div>
       </div>
 
@@ -220,7 +221,7 @@ export default function Dashboard() {
         <div className="card">
           <div className="card-header">
             <h3>Revenue Overview</h3>
-            <span className="badge badge-success">↑ 14% this month</span>
+            <span className="badge badge-success">â†‘ 14% this month</span>
           </div>
           <div className="card-body" style={{ paddingTop: 16 }}>
             <ResponsiveContainer width="100%" height={220}>
@@ -259,7 +260,7 @@ export default function Dashboard() {
               </ResponsiveContainer>
             ) : (
               <div className="empty-state" style={{ padding: '40px 0' }}>
-                <p>No giving data yet — seed giving options first.</p>
+                <p>No giving data yet â€” seed giving options first.</p>
               </div>
             )}
           </div>

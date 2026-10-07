@@ -23,6 +23,15 @@ class Society {
     );
   }
 
+  /// Row from the API's /societies endpoint (MySQL is the source of truth).
+  factory Society.fromApi(Map<String, dynamic> row) {
+    return Society(
+      id: row['society_id']?.toString() ?? '',
+      name: (row['society_name'] ?? 'Unknown').toString(),
+      circuit: row['circuit_name']?.toString(),
+    );
+  }
+
   factory Society.fromMap(Map<String, dynamic> map, String id) {
     return Society(
       id: id,

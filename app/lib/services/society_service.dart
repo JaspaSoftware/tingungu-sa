@@ -1,4 +1,9 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+import 'public_profile_service.dart';
 import 'package:flutter/foundation.dart';
 
 import '../data/society_model.dart';
@@ -6,25 +11,29 @@ import '../data/society_model.dart';
 class SocietyService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  /// Get all available societies from Firestore, deduplicated by name
-  /// (case/whitespace-insensitive) - the "Seed Societies Data" dev tool
-  /// creates new documents on every tap, so the collection can end up with
-  /// repeat entries for the same society.
+  static const String _apiBase = 'https://tingungu-api.azurewebsites.net/api';
+
+  /// The directory lives in MySQL and is served by the authenticated API.
+  static Future<List<Society>> _fetchDirectory() async {
+    final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+    if (token == null) return [];
+    final res = await http.get(
+      Uri.parse('$_apiBase/societies'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (res.statusCode != 200) {
+      throw Exception('Societies request failed (${res.statusCode})');
+    }
+    return (jsonDecode(res.body) as List)
+        .map((row) => Society.fromApi(row as Map<String, dynamic>))
+        .toList();
+  }
+
   static Future<List<Society>> getAllSocieties() async {
     try {
-      final snapshot = await _db.collection('societies').get();
-      final societies = snapshot.docs
-          .map((doc) => Society.fromMap(doc.data(), doc.id))
-          .toList();
-
-      final seenNames = <String>{};
-      final deduped = <Society>[];
-      for (final society in societies) {
-        if (seenNames.add(society.name.trim().toLowerCase())) {
-          deduped.add(society);
-        }
-      }
-      return deduped;
+      final societies = await _fetchDirectory();
+      societies.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      return societies;
     } catch (e) {
       if (kDebugMode) {
         print('Error fetching societies: $e');
@@ -33,47 +42,22 @@ class SocietyService {
     }
   }
 
-  /// Search societies by name or circuit in Firestore
   static Future<List<Society>> searchSocieties(String query) async {
-    try {
-      // Note: Firestore doesn't support partial string search natively easily
-      // We'll fetch and filter client-side for now as the list is small
-      final all = await getAllSocieties();
-      return all
-          .where(
-            (s) =>
-                s.name.toLowerCase().contains(query.toLowerCase()) ||
-                (s.circuit?.toLowerCase().contains(query.toLowerCase()) ??
-                    false),
-          )
-          .toList();
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error searching societies: $e');
-      }
-      return [];
-    }
+    final q = query.toLowerCase();
+    final all = await getAllSocieties();
+    return all
+        .where(
+          (s) =>
+              s.name.toLowerCase().contains(q) ||
+              (s.circuit?.toLowerCase().contains(q) ?? false),
+        )
+        .toList();
   }
 
-  /// Get societies by circuit (from Firestore)
   static Future<List<Society>> getSocietiesByCircuit(String circuit) async {
-    try {
-      final snapshot = await _db
-          .collection('societies')
-          .where('circuit', isEqualTo: circuit)
-          .get();
-
-      return snapshot.docs
-          .map((doc) => Society.fromMap(doc.data(), doc.id))
-          .toList();
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error fetching circuit societies: $e');
-      }
-      return [];
-    }
+    final all = await getAllSocieties();
+    return all.where((s) => s.circuit == circuit).toList();
   }
-
   /// Join a society (Update user profile in Firestore)
   static Future<Map<String, dynamic>> joinSociety(
     String userId,
@@ -84,6 +68,10 @@ class SocietyService {
         'society': societyName,
         'society_name': societyName,
       }, SetOptions(merge: true));
+      await PublicProfileService.update({
+        'society': societyName,
+        'society_name': societyName,
+      });
 
       return {'success': true, 'message': 'Joined society successfully'};
     } catch (e) {
@@ -107,14 +95,12 @@ class SocietyService {
           final cleanName = societyName.trim();
 
           // Find the society object by name (case-insensitive)
-          final snapshot = await _db.collection('societies').get();
-          for (var doc in snapshot.docs) {
-            final sData = doc.data();
-            final name = sData['name']?.toString() ?? '';
-            if (name.toLowerCase() == cleanName.toLowerCase() ||
-                name.toLowerCase().contains(cleanName.toLowerCase()) ||
-                cleanName.toLowerCase().contains(name.toLowerCase())) {
-              return Society.fromMap(sData, doc.id);
+          final lower = cleanName.toLowerCase();
+          final directory = await getAllSocieties();
+          for (final society in directory) {
+            final name = society.name.toLowerCase();
+            if (name == lower || name.contains(lower) || lower.contains(name)) {
+              return society;
             }
           }
 
@@ -142,6 +128,7 @@ class SocietyService {
       await _db.collection('users').doc(userId).update({
         'society': FieldValue.delete(),
       });
+      await PublicProfileService.update({'society': '', 'society_name': ''});
 
       return {'success': true, 'message': 'Left society successfully'};
     } catch (e) {

@@ -153,7 +153,6 @@ class _LoginScreenState extends State<LoginScreen> {
             'society': '',
             'dob': '',
             'profile_completed': false,
-            'wallet_balance': 0.0,
             'createdAt': FieldValue.serverTimestamp(),
           });
         }

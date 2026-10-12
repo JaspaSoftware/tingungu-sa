@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { FiPlus, FiTrash2, FiEdit2, FiMapPin } from 'react-icons/fi';
 import { API_BASE_URL } from '../config';
+import { apiFetch } from '../api';
 
 function Modal({ title, onClose, onSave, loading, children }) {
   return (
@@ -8,7 +9,7 @@ function Modal({ title, onClose, onSave, loading, children }) {
       <div className="modal">
         <div className="modal-header">
           <h3>{title}</h3>
-          <button className="btn-close" onClick={onClose}>✕</button>
+          <button className="btn-close" onClick={onClose}>âœ•</button>
         </div>
         <div className="modal-body">{children}</div>
         <div className="modal-footer">
@@ -40,7 +41,7 @@ export default function SocietiesPage() {
 
   const fetchSocieties = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/societies`);
+      const res = await apiFetch(`${API_BASE_URL}/societies`);
       const data = await res.json();
       setSocieties(data);
     } catch (err) {
@@ -50,7 +51,7 @@ export default function SocietiesPage() {
 
   const fetchCircuits = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/circuits`);
+      const res = await apiFetch(`${API_BASE_URL}/circuits`);
       const data = await res.json();
       setCircuits(data);
     } catch (err) {
@@ -103,7 +104,7 @@ export default function SocietiesPage() {
   const remove = async (id) => {
     if (!confirm('Delete this society?')) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/societies/${id}`, { method: 'DELETE' });
+      const res = await apiFetch(`${API_BASE_URL}/societies/${id}`, { method: 'DELETE' });
       if (res.ok) fetchSocieties();
     } catch (err) {
       console.error('Error deleting society:', err);
@@ -149,7 +150,7 @@ export default function SocietiesPage() {
                     <tr key={s.society_id}>
                       <td><span className="badge badge-outline">#{s.society_id}</span></td>
                       <td><strong>{s.society_name}</strong></td>
-                      <td>{s.circuit_name || '—'}</td>
+                      <td>{s.circuit_name || 'â€”'}</td>
                       <td>
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button className="btn btn-outline btn-sm btn-icon" onClick={() => openEdit(s)}><FiEdit2 size={14} /></button>

@@ -82,10 +82,11 @@ class LufunoBotService {
           "or tap \"Events\" in the bottom navigation bar.",
     ),
     _Topic(
-      keywords: ['community', 'society', 'societies'],
+      keywords: ['community', 'society', 'societies', 'circuit', 'minister'],
       response:
-          "You can connect with your society and the wider Tingungu "
-          "community via the \"Community\" tab in the bottom navigation.",
+          "You can browse every district, circuit and society — along with "
+          "their ministers' contact details — via the \"Community\" tab in "
+          "the bottom navigation.",
     ),
     _Topic(
       keywords: ['media', ' tv', 'sermon', 'video', 'stream', 'live'],

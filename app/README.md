@@ -48,6 +48,15 @@ The `main` branch currently utilizes **Sandbox/Test Credentials** for:
 
 Transitioning to production requires updating these tokens in the respective service configurations.
 
+## Firestore security rollout
+
+The root `firestore.rules` now denies access by default, restricts profile reads
+to the owner and admins, and blocks client-side wallet and giving writes. Before
+deploying these rules, migrate community member listings and other cross-user
+profile reads to a separate public-profile collection, and move wallet,
+transaction, and giving writes behind a trusted server that verifies payments.
+Admin portal users also need the `admin: true` Firebase Authentication custom
+claim, assigned through a trusted server or Firebase Admin SDK.
+
 ---
 © 2026 Tingungu Project
-

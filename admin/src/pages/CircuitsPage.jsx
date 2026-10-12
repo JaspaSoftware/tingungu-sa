@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { FiPlus, FiTrash2, FiLayers } from 'react-icons/fi';
 import { API_BASE_URL } from '../config';
+import { apiFetch } from '../api';
 
 function Modal({ title, onClose, onSave, loading, children }) {
   return (
@@ -8,7 +9,7 @@ function Modal({ title, onClose, onSave, loading, children }) {
       <div className="modal">
         <div className="modal-header">
           <h3>{title}</h3>
-          <button className="btn-close" onClick={onClose}>✕</button>
+          <button className="btn-close" onClick={onClose}>âœ•</button>
         </div>
         <div className="modal-body">{children}</div>
         <div className="modal-footer">
@@ -39,7 +40,7 @@ export default function CircuitsPage() {
 
   const fetchCircuits = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/circuits`);
+      const res = await apiFetch(`${API_BASE_URL}/circuits`);
       const data = await res.json();
       setCircuits(data);
     } catch (err) {
@@ -49,7 +50,7 @@ export default function CircuitsPage() {
 
   const fetchDistricts = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/districts`);
+      const res = await apiFetch(`${API_BASE_URL}/districts`);
       const data = await res.json();
       setDistricts(data);
       if (data.length > 0) setForm(f => ({ ...f, district_id: data[0].district_id }));
@@ -62,7 +63,7 @@ export default function CircuitsPage() {
     if (!form.name || !form.code || !form.district_id) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/circuits`, {
+      const res = await apiFetch(`${API_BASE_URL}/circuits`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -115,7 +116,7 @@ export default function CircuitsPage() {
                     <tr key={c.circuit_id}>
                       <td><span className="badge badge-outline">#{c.circuit_code}</span></td>
                       <td><strong>{c.circuit_name}</strong></td>
-                      <td>{c.district_name || '—'}</td>
+                      <td>{c.district_name || 'â€”'}</td>
                     </tr>
                   ))}
                 </tbody>

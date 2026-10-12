@@ -1,4 +1,3 @@
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -11,57 +10,54 @@ import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/onboarding_screen.dart';
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   GoogleFonts.config.allowRuntimeFetching = false;
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   final prefs = await SharedPreferences.getInstance();
   final isFirstLaunch = prefs.getBool('isFirstLaunch') ?? true;
   final user = FirebaseAuth.instance.currentUser;
 
-  runApp(MaterialApp(
-    debugShowCheckedModeBanner: false,
-    theme: ThemeData(
-      useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF3b0d11),
-        primary: const Color(0xFF3b0d11),
-        secondary: const Color(0xFFFB8B24),
-        brightness: Brightness.light,
-      ),
-      primaryColor: const Color(0xFF3b0d11),
-      scaffoldBackgroundColor: Colors.white,
-      fontFamily: 'Rubik',
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFFB8B24),
+  runApp(
+    MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF3b0d11),
+          primary: const Color(0xFF3b0d11),
+          secondary: const Color(0xFFFB8B24),
+          brightness: Brightness.light,
+        ),
+        primaryColor: const Color(0xFF3b0d11),
+        scaffoldBackgroundColor: Colors.white,
+        fontFamily: 'Rubik',
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFFB8B24),
+            foregroundColor: Colors.white,
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(foregroundColor: const Color(0xFFFB8B24)),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFFFB8B24),
+            side: const BorderSide(color: Color(0xFFFB8B24)),
+          ),
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF3b0d11),
           foregroundColor: Colors.white,
         ),
       ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: const Color(0xFFFB8B24),
-        ),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFFFB8B24),
-          side: const BorderSide(color: Color(0xFFFB8B24)),
-        ),
-      ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF3b0d11),
-        foregroundColor: Colors.white,
-      ),
+      home: isFirstLaunch
+          ? const OnboardingScreen()
+          : (user != null ? const HomeScreen() : const LoginScreen()),
     ),
-    home: isFirstLaunch
-        ? const OnboardingScreen()
-        : (user != null ? const HomeScreen() : const LoginScreen()),
-  ));
+  );
 }
 
 class MyApp extends StatefulWidget {
@@ -89,7 +85,6 @@ class _MyAppState extends State<MyApp> {
       ),
       debugShowCheckedModeBanner: false,
       home: const Splash(),
-
     );
   }
 }

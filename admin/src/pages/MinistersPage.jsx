@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { FiPlus, FiUser } from 'react-icons/fi';
 import { API_BASE_URL } from '../config';
+import { apiFetch } from '../api';
 
 export default function MinistersPage() {
   const [ministers, setMinisters] = useState([]);
@@ -13,7 +14,7 @@ export default function MinistersPage() {
 
   const fetchMinisters = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/ministers`);
+      const res = await apiFetch(`${API_BASE_URL}/ministers`);
       const data = await res.json();
       setMinisters(data);
     } catch (err) {

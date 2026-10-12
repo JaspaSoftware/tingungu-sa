@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:pay/pay.dart';
 import '../screens/payfast_page.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/payment_api.dart';
 
 class PaymentMethodSelector extends StatefulWidget {
   final double amount;
   final String title;
   final String description;
+  final String purpose;
+  final String? givingOptionId;
   final Function(String method) onPaymentSuccess;
   final VoidCallback onPaymentFailed;
 
@@ -16,6 +16,8 @@ class PaymentMethodSelector extends StatefulWidget {
     required this.amount,
     required this.title,
     required this.description,
+    required this.purpose,
+    this.givingOptionId,
     required this.onPaymentSuccess,
     required this.onPaymentFailed,
   });
@@ -27,72 +29,59 @@ class PaymentMethodSelector extends StatefulWidget {
 class _PaymentMethodSelectorState extends State<PaymentMethodSelector> {
   bool _isProcessing = false;
 
-  final Future<PaymentConfiguration> _googlePayConfigFuture =
-      PaymentConfiguration.fromAsset('lib/assets/pay/default_google_pay_config.json');
-
-  void _onGooglePayResult(dynamic result) {
-    debugPrint('Google Pay result: $result');
-    widget.onPaymentSuccess('Google Pay');
-  }
-
   Future<void> _processWalletPayment() async {
     setState(() => _isProcessing = true);
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) throw Exception("Not logged in");
-
-      final docRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
-      await FirebaseFirestore.instance.runTransaction((transaction) async {
-        final snapshot = await transaction.get(docRef);
-        if (!snapshot.exists) throw Exception("User not found");
-
-        final balance = (snapshot.data()?['wallet_balance'] ?? 0.0).toDouble();
-        if (balance < widget.amount) {
-          throw Exception("Insufficient wallet balance");
-        }
-
-        // Deduct balance
-        transaction.update(docRef, {'wallet_balance': balance - widget.amount});
-      });
-
+      await PaymentApi.payWithWallet(
+        amount: widget.amount,
+        purpose: widget.purpose,
+        givingOptionId: widget.givingOptionId,
+        note: widget.description,
+      );
       widget.onPaymentSuccess('Wallet');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceAll("Exception: ", "")), backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      }
       widget.onPaymentFailed();
     } finally {
       if (mounted) setState(() => _isProcessing = false);
     }
   }
 
-  void _processPayFastPayment() {
-    final user = FirebaseAuth.instance.currentUser;
-    final Map<String, String> formData = {
-      'receiver': '14362369', // Replace with actual PayFast merchant ID
-      'item_name': widget.title,
-      'item_description': widget.description,
-      'amount': widget.amount.toStringAsFixed(2),
-      'return_url': 'https://www.tingungu.co.za/success',
-      'cancel_url': 'https://www.tingungu.co.za/cancel',
-      'notify_url': 'https://www.tingungu.co.za/notify',
-      'name_first': user?.displayName?.split(' ').first ?? 'Guest',
-      'email_address': user?.email ?? 'conferencendlovu@gmail.com',
-    };
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PayFastWebView(formData: formData, isWalletTopUp: false),
-      ),
-    ).then((result) {
-      // If result is true, payment was successful
+  Future<void> _processPayFastPayment() async {
+    setState(() => _isProcessing = true);
+    try {
+      final session = await PaymentApi.startPayFast(
+        amount: widget.amount,
+        purpose: widget.purpose,
+        givingOptionId: widget.givingOptionId,
+        note: widget.description,
+      );
+      if (!mounted) return;
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PayFastWebView(session: session, isWalletTopUp: false),
+        ),
+      );
       if (result == true) {
         widget.onPaymentSuccess('PayFast');
       } else {
         widget.onPaymentFailed();
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      }
+      widget.onPaymentFailed();
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
   }
 
   @override
@@ -149,32 +138,6 @@ class _PaymentMethodSelectorState extends State<PaymentMethodSelector> {
                 subtitle: 'Credit Card, Instant EFT, and more',
                 icon: Icons.payment_outlined,
                 onTap: _isProcessing ? null : _processPayFastPayment,
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Other Options',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
-              ),
-              const SizedBox(height: 12),
-              FutureBuilder<PaymentConfiguration>(
-                future: _googlePayConfigFuture,
-                builder: (context, snapshot) => snapshot.hasData
-                    ? GooglePayButton(
-                        paymentConfiguration: snapshot.data!,
-                        paymentItems: [
-                          PaymentItem(
-                            label: widget.title,
-                            amount: widget.amount.toStringAsFixed(2),
-                            status: PaymentItemStatus.final_price,
-                          )
-                        ],
-                        type: GooglePayButtonType.buy,
-                        margin: const EdgeInsets.only(top: 15.0),
-                        onPaymentResult: _onGooglePayResult,
-                        loadingIndicator: const Center(child: CircularProgressIndicator()),
-                        width: double.infinity,
-                      )
-                    : const SizedBox.shrink(),
               ),
               const SizedBox(height: 24),
             ],

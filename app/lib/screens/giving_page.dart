@@ -61,28 +61,9 @@ class _GivingPageState extends State<GivingPage> {
         amount: amount,
         title: 'Giving: $selectedGivingType',
         description: noteController.text.isEmpty ? 'General Giving' : noteController.text,
+        purpose: 'giving',
+        givingOptionId: selectedGivingTypeId,
         onPaymentSuccess: (method) async {
-          // Record transaction
-          final txRef = FirebaseFirestore.instance.collection('users').doc(user!.uid).collection('transactions').doc();
-          await txRef.set({
-            'amount': amount,
-            'type': 'Giving: $selectedGivingType ($method)',
-            'date': FieldValue.serverTimestamp(),
-            'note': noteController.text,
-          });
-
-          // Record global giving record
-          final givingRef = FirebaseFirestore.instance.collection('givings').doc();
-          await givingRef.set({
-            'type': selectedGivingType,
-            'amount': amount,
-            'giverName': user!.displayName ?? 'Anonymous',
-            'giverUID': user!.uid,
-            'note': noteController.text,
-            'createdAt': FieldValue.serverTimestamp(),
-            'method': method,
-          });
-
           if (mounted) setState(() => _isProcessing = false);
           if (!context.mounted) return;
           Navigator.pop(context);

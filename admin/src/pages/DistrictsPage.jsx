@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { FiPlus, FiTrash2, FiMap } from 'react-icons/fi';
 import { API_BASE_URL } from '../config';
+import { apiFetch } from '../api';
 
 function Modal({ title, onClose, onSave, loading, children }) {
   return (
@@ -8,7 +9,7 @@ function Modal({ title, onClose, onSave, loading, children }) {
       <div className="modal">
         <div className="modal-header">
           <h3>{title}</h3>
-          <button className="btn-close" onClick={onClose}>✕</button>
+          <button className="btn-close" onClick={onClose}>âœ•</button>
         </div>
         <div className="modal-body">{children}</div>
         <div className="modal-footer">
@@ -37,7 +38,7 @@ export default function DistrictsPage() {
 
   const fetchDistricts = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/districts`);
+      const res = await apiFetch(`${API_BASE_URL}/districts`);
       const data = await res.json();
       setDistricts(data);
     } catch (err) {
@@ -49,7 +50,7 @@ export default function DistrictsPage() {
     if (!name) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/districts`, {
+      const res = await apiFetch(`${API_BASE_URL}/districts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),

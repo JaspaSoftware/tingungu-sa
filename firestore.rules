@@ -60,7 +60,8 @@ service cloud.firestore {
       allow create, update: if isOwner(userId)
         && request.resource.data.keys().hasOnly([
           'displayname', 'avatar', 'society', 'society_name',
-          'presence_status', 'presence_active', 'presence_updated_at'
+          'presence_status', 'presence_active', 'presence_updated_at',
+          'presence_backgrounded_at'
         ]);
       allow delete: if isAdmin();
     }

@@ -97,6 +97,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /societies/{documentId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /circuits/{documentId} {
       allow read: if true;
       allow write: if isAdmin();

@@ -21,9 +21,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   final FocusNode _emailFocusNode = FocusNode();
 
   bool _agreedToTerms = false;
+  bool _obscurePassword = true;
   bool _isLoading = false;
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -33,6 +37,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     _emailFocusNode.dispose();
     super.dispose();
   }
@@ -52,7 +58,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         UserCredential userCredential = await _auth
             .createUserWithEmailAndPassword(
               email: _emailController.text.trim(),
-              password: "tempPassword",
+              password: _passwordController.text,
             );
 
         final uid = userCredential.user?.uid;
@@ -389,6 +395,48 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           validator: (value) => value!.contains("@")
                               ? null
                               : "Enter a valid email",
+                        ),
+                        const SizedBox(height: 20),
+
+                        /// Password
+                        TextFormField(
+                          controller: _passwordController,
+                          obscureText: _obscurePassword,
+                          decoration: InputDecoration(
+                            labelText: "Password",
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                              ),
+                              onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword,
+                              ),
+                            ),
+                          ),
+                          validator: (value) => (value ?? '').length < 8
+                              ? "Use at least 8 characters"
+                              : null,
+                        ),
+                        const SizedBox(height: 20),
+
+                        /// Confirm Password
+                        TextFormField(
+                          controller: _confirmPasswordController,
+                          obscureText: _obscurePassword,
+                          decoration: InputDecoration(
+                            labelText: "Confirm Password",
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          validator: (value) => value != _passwordController.text
+                              ? "Passwords do not match"
+                              : null,
                         ),
                         const SizedBox(height: 20),
 

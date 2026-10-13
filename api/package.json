@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "test": "node --test \"test/**/*.test.js\"",
     "seed": "node seed.js",
     "mysql-seed": "node mysql_seed.js"
   },

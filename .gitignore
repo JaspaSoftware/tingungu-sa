@@ -38,6 +38,8 @@ app/android/build/
 # Admin portal
 admin/node_modules/
 admin/dist/
+admin/.env*
+!admin/.env.example
 
 # Website
 website/node_modules/
@@ -59,6 +61,7 @@ app.*.map.json
 # Firebase
 .firebase/
 hosting/
+/deploy/
 
 # API
 api/node_modules/

@@ -1,121 +1,116 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 
+import '../config/app_config.dart';
 import '../data/community_model.dart';
+import 'api_client.dart';
 
 class CommunityService {
-  static const String _baseUrl = 'https://yourdomain.com/api/communities';
+  static final ApiClient _api = ApiClient.shared;
 
-  /// Get all available communities
+  static Future<ApiResponse> _request(
+    String path, {
+    Map<String, String>? queryParameters,
+    Map<String, dynamic>? body,
+  }) {
+    if (body != null) {
+      return _api.post(
+        path,
+        baseUrl: AppConfig.communityApiBaseUrl,
+        queryParameters: queryParameters,
+        body: body,
+      );
+    }
+    return _api.get(
+      path,
+      baseUrl: AppConfig.communityApiBaseUrl,
+      queryParameters: queryParameters,
+      timeout: const Duration(seconds: 10),
+    );
+  }
+
+  static Map<String, dynamic> _requireObject(Object? body) {
+    if (body is Map<String, dynamic>) return body;
+    throw const FormatException('Community service returned an invalid response.');
+  }
+
+  /// Get all available communities.
   static Future<List<Community>> getAvailableCommunities() async {
     try {
-      final response = await http
-          .get(Uri.parse('$_baseUrl/get_communities.php'))
-          .timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
-        if (data['success'] == true && data['data'] is List) {
-          List<Community> communities = [];
-          for (var communityData in data['data']) {
-            communities.add(Community.fromJson(communityData));
-          }
-          return communities;
-        }
+      final data = _requireObject(
+        (await _request('get_communities.php')).body,
+      );
+      if (data['success'] == true && data['data'] is List) {
+        return (data['data'] as List)
+            .map((item) => Community.fromJson(item))
+            .toList();
       }
-
       return [];
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error fetching communities: $e');
-      }
+    } catch (error) {
+      if (kDebugMode) debugPrint('Error fetching communities: $error');
       return [];
     }
   }
 
-  /// Join community with invitation code
+  /// Join a community with an invitation code.
   static Future<Map<String, dynamic>> joinCommunityWithCode(
-      String invitationCode,
-      int userId,
-      ) async {
+    String invitationCode,
+    int userId,
+  ) async {
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/join_community.php'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'invitation_code': invitationCode,
-          'user_id': userId,
-        }),
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        return {
-          'success': false,
-          'message': 'Failed to join community',
-        };
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error joining community: $e');
-      }
-      return {
-        'success': false,
-        'message': 'Error: $e',
-      };
+      return _requireObject(
+        (await _request(
+          'join_community.php',
+          body: {
+            'invitation_code': invitationCode,
+            'user_id': userId,
+          },
+        ))
+            .body,
+      );
+    } catch (error) {
+      if (kDebugMode) debugPrint('Error joining community: $error');
+      return {'success': false, 'message': error.toString()};
     }
   }
 
-  /// Get user's joined communities
+  /// Get a user's joined communities.
   static Future<List<Community>> getUserCommunities(int userId) async {
     try {
-      final response = await http
-          .get(Uri.parse('$_baseUrl/get_user_communities.php?user_id=$userId'))
-          .timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
-        if (data['success'] == true && data['data'] is List) {
-          List<Community> communities = [];
-          for (var communityData in data['data']) {
-            communities.add(Community.fromJson(communityData));
-          }
-          return communities;
-        }
+      final data = _requireObject(
+        (await _request(
+          'get_user_communities.php',
+          queryParameters: {'user_id': '$userId'},
+        ))
+            .body,
+      );
+      if (data['success'] == true && data['data'] is List) {
+        return (data['data'] as List)
+            .map((item) => Community.fromJson(item))
+            .toList();
       }
-
       return [];
-    } catch (e) {
-      print('Error fetching user communities: $e');
+    } catch (error) {
+      if (kDebugMode) debugPrint('Error fetching user communities: $error');
       return [];
     }
   }
 
-  /// Get community details by ID
+  /// Get community details by ID.
   static Future<Community?> getCommunityDetails(int communityId) async {
     try {
-      final response = await http
-          .get(Uri.parse('$_baseUrl/get_community_details.php?id=$communityId'))
-          .timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
-        if (data['success'] == true && data['data'] != null) {
-          return Community.fromJson(data['data']);
-        }
+      final data = _requireObject(
+        (await _request(
+          'get_community_details.php',
+          queryParameters: {'id': '$communityId'},
+        ))
+            .body,
+      );
+      if (data['success'] == true && data['data'] != null) {
+        return Community.fromJson(data['data']);
       }
-
       return null;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error fetching community details: $e');
-      }
+    } catch (error) {
+      if (kDebugMode) debugPrint('Error fetching community details: $error');
       return null;
     }
   }

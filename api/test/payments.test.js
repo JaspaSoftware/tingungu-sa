@@ -76,6 +76,96 @@ describe('POST /wallet-pay', () => {
     assert.equal(db.read('users/u1').wallet_balance, 100);
   });
 
+  test('rejects a deactivated giving option', async () => {
+    db.seed('giving_options/tithe', { name: 'Tithe', active: false });
+    const res = await server.call('POST', '/api/payments/wallet-pay', {
+      uid: 'u1',
+      body: giving,
+    });
+    assert.equal(res.status, 400);
+    assert.equal(db.read('users/u1').wallet_balance, 100);
+    assert.equal(db.list('givings').length, 0);
+  });
+
+  test('enforces persisted giving limits and ignores client-supplied limits', async () => {
+    db.seed('giving_options/tithe', {
+      name: 'Tithe',
+      minAmount: 50,
+      maxAmount: 500,
+    });
+
+    for (const amount of [49.99, 500.01]) {
+      const res = await server.call('POST', '/api/payments/wallet-pay', {
+        uid: 'u1',
+        body: { ...giving, amount, minAmount: 0, maxAmount: 0 },
+      });
+      assert.equal(res.status, 400);
+      assert.match(res.json.error, /outside the allowed range/);
+    }
+
+    assert.equal(db.read('users/u1').wallet_balance, 100);
+    assert.equal(db.list('users/u1/transactions').length, 0);
+    assert.equal(db.list('givings').length, 0);
+  });
+
+  test('accepts inclusive giving-option boundaries for wallet payments', async () => {
+    db.seed('users/u1', { displayname: 'Thabo', wallet_balance: 1000 });
+    db.seed('giving_options/tithe', {
+      name: 'Tithe',
+      minAmount: 50,
+      maxAmount: 500,
+    });
+
+    for (const amount of [50, 500]) {
+      const res = await server.call('POST', '/api/payments/wallet-pay', {
+        uid: 'u1',
+        body: { ...giving, amount },
+      });
+      assert.equal(res.status, 200);
+    }
+
+    assert.equal(db.read('users/u1').wallet_balance, 450);
+    assert.equal(db.list('users/u1/transactions').length, 2);
+    assert.equal(db.list('givings').length, 2);
+  });
+
+  test('treats unset limits as optional and rejects incoherent option limits', async () => {
+    const unrestricted = await server.call('POST', '/api/payments/wallet-pay', {
+      uid: 'u1',
+      body: { ...giving, amount: 5 },
+    });
+    assert.equal(unrestricted.status, 200);
+
+    db.seed('giving_options/tithe', { name: 'Tithe', minAmount: 50 });
+    const minimumOnly = await server.call('POST', '/api/payments/wallet-pay', {
+      uid: 'u1',
+      body: { ...giving, amount: 50 },
+    });
+    assert.equal(minimumOnly.status, 200);
+
+    db.seed('giving_options/tithe', { name: 'Tithe', maxAmount: 50 });
+    const maximumOnly = await server.call('POST', '/api/payments/wallet-pay', {
+      uid: 'u1',
+      body: { ...giving, amount: 5 },
+    });
+    assert.equal(maximumOnly.status, 200);
+
+    db.seed('giving_options/tithe', {
+      name: 'Tithe',
+      minAmount: 100,
+      maxAmount: 50,
+    });
+    const invalid = await server.call('POST', '/api/payments/wallet-pay', {
+      uid: 'u1',
+      body: { ...giving, amount: 40 },
+    });
+    assert.equal(invalid.status, 500);
+    assert.match(invalid.json.error, /payment limits are invalid/);
+    assert.equal(db.read('users/u1').wallet_balance, 40);
+    assert.equal(db.list('users/u1/transactions').length, 3);
+    assert.equal(db.list('givings').length, 3);
+  });
+
   test('refuses to overspend and leaves the balance untouched', async () => {
     const res = await server.call('POST', '/api/payments/wallet-pay', {
       uid: 'u1',
@@ -155,6 +245,125 @@ describe('POST /payfast/create', () => {
     }
     assert.equal(db.list('payments').length, 0);
   });
+
+  test('enforces persisted giving limits before creating a PayFast payment', async () => {
+    db.seed('giving_options/tithe', {
+      name: 'Tithe',
+      minAmount: 50,
+      maxAmount: 500,
+    });
+
+    for (const amount of [49.99, 500.01]) {
+      const res = await server.call('POST', '/api/payments/payfast/create', {
+        uid: 'u1',
+        body: {
+          purpose: 'giving',
+          givingOptionId: 'tithe',
+          amount,
+          minAmount: 0,
+          maxAmount: 0,
+        },
+      });
+      assert.equal(res.status, 400);
+      assert.match(res.json.error, /outside the allowed range/);
+    }
+
+    assert.equal(db.list('payments').length, 0);
+  });
+
+  test('accepts inclusive giving-option boundaries for PayFast', async () => {
+    db.seed('giving_options/tithe', {
+      name: 'Tithe',
+      minAmount: 50,
+      maxAmount: 500,
+    });
+
+    for (const amount of [50, 500]) {
+      const res = await server.call('POST', '/api/payments/payfast/create', {
+        uid: 'u1',
+        body: { purpose: 'giving', givingOptionId: 'tithe', amount },
+      });
+      assert.equal(res.status, 200);
+    }
+
+    assert.deepEqual(
+      db.list('payments').map((payment) => payment.amount).sort((a, b) => a - b),
+      [50, 500],
+    );
+  });
+
+  test('preserves general limits when option limits are unset or extend beyond them', async () => {
+    db.seed('giving_options/tithe', {
+      name: 'Tithe',
+      minAmount: 0,
+      maxAmount: 60000,
+    });
+
+    const generalMinimum = await server.call('POST', '/api/payments/payfast/create', {
+      uid: 'u1',
+      body: { purpose: 'giving', givingOptionId: 'tithe', amount: 5 },
+    });
+    assert.equal(generalMinimum.status, 200);
+
+    const generalMaximum = await server.call('POST', '/api/payments/payfast/create', {
+      uid: 'u1',
+      body: { purpose: 'giving', givingOptionId: 'tithe', amount: 50000 },
+    });
+    assert.equal(generalMaximum.status, 200);
+
+    for (const amount of [4.99, 50000.01]) {
+      const res = await server.call('POST', '/api/payments/payfast/create', {
+        uid: 'u1',
+        body: { purpose: 'giving', givingOptionId: 'tithe', amount },
+      });
+      assert.equal(res.status, 400);
+    }
+
+    db.seed('giving_options/tithe', {
+      name: 'Tithe',
+      minAmount: 60000,
+      maxAmount: 70000,
+    });
+    const optionMinimumAboveGeneralMaximum = await server.call(
+      'POST',
+      '/api/payments/payfast/create',
+      {
+        uid: 'u1',
+        body: { purpose: 'giving', givingOptionId: 'tithe', amount: 50000 },
+      },
+    );
+    assert.equal(optionMinimumAboveGeneralMaximum.status, 400);
+    assert.equal(db.list('payments').length, 2);
+  });
+
+  test('rejects invalid giving-option limits without creating a payment', async () => {
+    db.seed('giving_options/tithe', {
+      name: 'Tithe',
+      minAmount: 100,
+      maxAmount: 50,
+    });
+    const res = await server.call('POST', '/api/payments/payfast/create', {
+      uid: 'u1',
+      body: { purpose: 'giving', givingOptionId: 'tithe', amount: 40 },
+    });
+
+    assert.equal(res.status, 500);
+    assert.match(res.json.error, /payment limits are invalid/);
+    assert.equal(db.list('payments').length, 0);
+
+    db.seed('giving_options/tithe', {
+      name: 'Tithe',
+      minAmount: 'not-an-amount',
+      maxAmount: 500,
+    });
+    const malformed = await server.call('POST', '/api/payments/payfast/create', {
+      uid: 'u1',
+      body: { purpose: 'giving', givingOptionId: 'tithe', amount: 40 },
+    });
+    assert.equal(malformed.status, 500);
+    assert.match(malformed.json.error, /payment limits are invalid/);
+    assert.equal(db.list('payments').length, 0);
+  });
 });
 
 describe('GET /:id', () => {
@@ -209,6 +418,11 @@ describe('POST /payfast/notify (ITN)', () => {
     seedPayment();
     assert.equal((await notify(itn({}, { sign: false }))).status, 400);
     assert.equal((await notify(itn().replace(/signature=[0-9a-f]+/, 'signature=deadbeef'))).status, 400);
+    assert.equal(
+      (await notify(itn({ payment_status: 'CANCELLED' }, { sign: false }))).status,
+      400,
+    );
+    assert.equal(db.read('payments/p1').status, 'pending');
     assert.equal(db.read('users/u1').wallet_balance, 100);
     done();
   });
@@ -251,11 +465,66 @@ describe('POST /payfast/notify (ITN)', () => {
     done();
   });
 
-  test('marks a non-complete payment failed without crediting', async () => {
+  test('marks a verified failed payment failed without crediting', async () => {
     seedPayment();
-    assert.equal((await notify(itn({ payment_status: 'CANCELLED' }))).status, 200);
+    assert.equal((await notify(itn({ payment_status: 'FAILED' }))).status, 200);
     assert.equal(db.read('payments/p1').status, 'failed');
     assert.equal(db.read('users/u1').wallet_balance, 100);
+    const status = await server.call('GET', '/api/payments/p1', { uid: 'u1' });
+    assert.equal(status.status, 200);
+    assert.equal(status.json.status, 'failed');
+    done();
+  });
+
+  test('keeps pending and unknown provider statuses unresolved', async () => {
+    seedPayment();
+    assert.equal((await notify(itn({ payment_status: 'PENDING' }))).status, 200);
+    assert.equal(db.read('payments/p1').status, 'pending');
+    assert.equal(db.read('payments/p1').pfStatus, 'PENDING');
+
+    assert.equal((await notify(itn({ payment_status: 'CANCELLED' }))).status, 200);
+    assert.equal(db.read('payments/p1').status, 'pending');
+    assert.equal(db.read('payments/p1').pfStatus, 'CANCELLED');
+    assert.equal(db.read('users/u1').wallet_balance, 100);
+    assert.equal(db.list('users/u1/transactions').length, 0);
+    const status = await server.call('GET', '/api/payments/p1', { uid: 'u1' });
+    assert.equal(status.status, 200);
+    assert.equal(status.json.status, 'pending');
+    done();
+  });
+
+  test('late verified success updates the status after the client has stopped polling', async () => {
+    seedPayment();
+    const before = await server.call('GET', '/api/payments/p1', { uid: 'u1' });
+    assert.equal(before.status, 200);
+    assert.equal(before.json.status, 'pending');
+
+    assert.equal((await notify(itn())).status, 200);
+    const after = await server.call('GET', '/api/payments/p1', { uid: 'u1' });
+    assert.equal(after.status, 200);
+    assert.equal(after.json.status, 'complete');
+    assert.equal(db.read('users/u1').wallet_balance, 150);
+    assert.equal(db.list('users/u1/transactions').length, 1);
+    done();
+  });
+
+  test('a stale non-final notification cannot overwrite a completed payment', async () => {
+    seedPayment();
+    assert.equal((await notify(itn())).status, 200);
+    assert.equal((await notify(itn({ payment_status: 'PENDING' }))).status, 200);
+    assert.equal(db.read('payments/p1').status, 'complete');
+    assert.equal(db.read('users/u1').wallet_balance, 150);
+    assert.equal(db.list('users/u1/transactions').length, 1);
+    done();
+  });
+
+  test('a late success cannot overwrite an already-final failed payment', async () => {
+    seedPayment();
+    assert.equal((await notify(itn({ payment_status: 'FAILED' }))).status, 200);
+    assert.equal((await notify(itn())).status, 200);
+    assert.equal(db.read('payments/p1').status, 'failed');
+    assert.equal(db.read('users/u1').wallet_balance, 100);
+    assert.equal(db.list('users/u1/transactions').length, 0);
     done();
   });
 

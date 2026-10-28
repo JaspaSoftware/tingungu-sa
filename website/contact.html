@@ -50,7 +50,7 @@
                 <a href="about.html">About</a>
                 <a href="events.html">Events</a>
                 <a href="contact.html" class="active">Contact</a>
-                <a href="https://tingungu-sa.web.app/app" class="nav-btn">Open App</a>
+                <a href="/app/" class="nav-btn">Open App</a>
             </div>
         </div>
     </nav>
@@ -95,7 +95,7 @@
                 <!-- Contact form -->
                 <div class="form-card">
                     <h2 style="font-size: 1.75rem; margin-bottom: 24px; color: var(--maroon);">Get In Touch</h2>
-                    <form name="contactForm" id="contactForm" autocomplete="off">
+                    <form name="contactForm" id="contactForm" autocomplete="on">
                         <div class="form-group">
                             <label class="form-label" for="cName">Your Name</label>
                             <input name="cName" id="cName" class="form-control" placeholder="e.g. Jane Doe" required type="text">
@@ -117,6 +117,7 @@
                         </div>
 
                         <input id="submit" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 1rem; margin-top: 12px;" value="Send Message" type="submit">
+                        <p id="contactFormStatus" class="form-status" role="status" aria-live="polite"></p>
                     </form>
                 </div>
             </div>

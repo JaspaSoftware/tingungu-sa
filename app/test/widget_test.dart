@@ -8,23 +8,40 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:tingungu_app/main.dart';
+import 'package:tingungu_app/config/app_config.dart';
+import 'package:tingungu_app/screens/payment_status_screen.dart';
+import 'package:tingungu_app/services/payment_api.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  test('Application config exposes the app and legacy backend endpoints', () {
+    expect(AppConfig.apiBaseUrl, contains('api'));
+    expect(AppConfig.legacyBackendUrl, contains('backend'));
+    expect(AppConfig.communityApiBaseUrl, isEmpty);
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  testWidgets('pending payment messaging does not claim cancellation', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: PaymentStatusScreen(
+          paymentId: 'payment-1',
+          purpose: 'topup',
+          initialResult: PaymentPollResult(
+            status: PaymentState.pending,
+            timedOut: true,
+          ),
+        ),
+      ),
+    );
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Payment Processing'), findsNWidgets(2));
+    expect(find.text('Check status'), findsOneWidget);
+    expect(
+      find.textContaining('Your payment status is still being verified'),
+      findsOneWidget,
+    );
+    expect(find.text('Payment Cancelled'), findsNothing);
+    expect(find.textContaining('No charges have been made'), findsNothing);
   });
 }

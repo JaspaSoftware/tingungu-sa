@@ -10,7 +10,7 @@ enum PresenceStatus { online, busy, away }
 
 /// Tracks and displays each member's live presence.
 ///
-/// Three Firestore fields on `users/{uid}` drive this:
+/// Presence is stored on `public_profiles/{uid}`:
 /// - `presence_status`: the member's chosen status ('online' | 'busy' | 'away')
 /// - `presence_active`: whether they're signed in (false only after Logout)
 /// - `presence_backgrounded_at`: server timestamp of when the app was last

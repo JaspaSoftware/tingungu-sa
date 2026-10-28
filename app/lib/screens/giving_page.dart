@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'thank_you_screen.dart';
 import '../components/payment_method_selector.dart';
+import '../services/payment_api.dart';
+import 'payment_status_screen.dart';
 
 class GivingPage extends StatefulWidget {
   static const String id = "givingScreen";
@@ -31,14 +33,20 @@ class _GivingPageState extends State<GivingPage> {
   void _processGiving() {
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in to give'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Please log in to give'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
 
     if (selectedGivingType == null || amountController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select type and enter amount'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Please select type and enter amount'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -46,7 +54,10 @@ class _GivingPageState extends State<GivingPage> {
     final amount = double.tryParse(amountController.text) ?? 0.0;
     if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid amount'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Please enter a valid amount'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -57,24 +68,46 @@ class _GivingPageState extends State<GivingPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => PaymentMethodSelector(
+      builder: (sheetContext) => PaymentMethodSelector(
         amount: amount,
         title: 'Giving: $selectedGivingType',
-        description: noteController.text.isEmpty ? 'General Giving' : noteController.text,
+        description: noteController.text.isEmpty
+            ? 'General Giving'
+            : noteController.text,
         purpose: 'giving',
         givingOptionId: selectedGivingTypeId,
         onPaymentSuccess: (method) async {
           if (mounted) setState(() => _isProcessing = false);
-          if (!context.mounted) return;
-          Navigator.pop(context);
+          if (!mounted || !sheetContext.mounted) return;
+          Navigator.pop(sheetContext);
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => ThankYouScreen(amount: amount, paymentMethod: method)),
+            MaterialPageRoute(
+              builder: (context) =>
+                  ThankYouScreen(amount: amount, paymentMethod: method),
+            ),
           );
         },
         onPaymentFailed: () {
           if (mounted) setState(() => _isProcessing = false);
-          Navigator.pop(context);
+          Navigator.pop(sheetContext);
+        },
+        onPaymentPending: (paymentId) {
+          if (mounted) setState(() => _isProcessing = false);
+          Navigator.pop(sheetContext);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PaymentStatusScreen(
+                paymentId: paymentId,
+                purpose: 'giving',
+                initialResult: const PaymentPollResult(
+                  status: PaymentState.pending,
+                  timedOut: true,
+                ),
+              ),
+            ),
+          );
         },
       ),
     ).then((_) {
@@ -88,7 +121,10 @@ class _GivingPageState extends State<GivingPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFFAF9F6),
       appBar: AppBar(
-        title: const Text('Give', style: TextStyle(color: Colors.white, fontSize: 18)),
+        title: const Text(
+          'Give',
+          style: TextStyle(color: Colors.white, fontSize: 18),
+        ),
         backgroundColor: const Color(0xFF3B0D11),
         iconTheme: const IconThemeData(color: Colors.white),
         centerTitle: true,
@@ -100,16 +136,26 @@ class _GivingPageState extends State<GivingPage> {
           children: [
             const Text(
               "Select Giving Type",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF3B0D11)),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF3B0D11),
+              ),
             ),
             const SizedBox(height: 12),
             StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('giving_options').snapshots(),
+              stream: FirebaseFirestore.instance
+                  .collection('giving_options')
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const LinearProgressIndicator();
-                
+
                 final options = snapshot.data!.docs;
-                if (options.isEmpty) return const Text("No giving options available. Please seed data.");
+                if (options.isEmpty) {
+                  return const Text(
+                    "No giving options available. Please seed data.",
+                  );
+                }
 
                 // Use the document ID as the dropdown value rather than the
                 // display name: duplicate "name" values (e.g. from seeding
@@ -126,8 +172,14 @@ class _GivingPageState extends State<GivingPage> {
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey.shade200),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey.shade200),
+                    ),
                   ),
                   items: options.map((doc) {
                     final data = doc.data() as Map<String, dynamic>;
@@ -139,7 +191,8 @@ class _GivingPageState extends State<GivingPage> {
                     final data = doc.data() as Map<String, dynamic>;
                     setState(() {
                       selectedGivingTypeId = val;
-                      selectedGivingType = data['name'] as String? ?? 'Untitled';
+                      selectedGivingType =
+                          data['name'] as String? ?? 'Untitled';
                     });
                   },
                   hint: const Text("Choose what to give for"),
@@ -149,26 +202,42 @@ class _GivingPageState extends State<GivingPage> {
             const SizedBox(height: 24),
             const Text(
               "Amount",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF3B0D11)),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF3B0D11),
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               decoration: InputDecoration(
                 prefixText: "R ",
                 filled: true,
                 fillColor: Colors.white,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade200),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade200),
+                ),
                 hintText: "0.00",
               ),
             ),
             const SizedBox(height: 24),
             const Text(
               "Note (Optional)",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF3B0D11)),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF3B0D11),
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -177,8 +246,14 @@ class _GivingPageState extends State<GivingPage> {
               decoration: InputDecoration(
                 filled: true,
                 fillColor: Colors.white,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade200),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade200),
+                ),
                 hintText: "Add a message...",
               ),
             ),
@@ -191,11 +266,19 @@ class _GivingPageState extends State<GivingPage> {
                   backgroundColor: const Color(0xFFFB8B24),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: _isProcessing 
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text("Complete Giving", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: _isProcessing
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        "Complete Giving",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
           ],

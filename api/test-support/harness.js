@@ -45,6 +45,7 @@ function docRef(p) {
     get: async () => snapshot(p, ref),
     set: async (data, opts) => applySet(p, data, opts),
     update: async (data) => applyUpdate(p, data),
+    delete: async () => store.delete(p),
     collection: (name) => collectionRef(`${p}/${name}`),
   };
   return ref;
@@ -59,6 +60,11 @@ function childPaths(collectionPath) {
 function collectionRef(p) {
   return {
     doc: (id) => docRef(`${p}/${id || `auto${++counter}`}`),
+    add: async (data) => {
+      const ref = docRef(`${p}/auto${++counter}`);
+      await ref.set(data);
+      return ref;
+    },
     where: (field, op, values) => ({
       get: async () => ({
         docs: childPaths(p)
@@ -99,8 +105,19 @@ const fakeAuth = {
   requireAuth: (req, res, next) => {
     const uid = req.headers['x-test-uid'];
     if (!uid) return res.status(401).json({ error: 'Authentication required' });
-    req.user = { uid, name: 'Test Member', email: 'member@example.com' };
+    req.user = {
+      uid,
+      name: 'Test Member',
+      email: 'member@example.com',
+      admin: req.headers['x-test-admin'] === 'true',
+    };
     next();
+  },
+  requireAdmin: (req, res, next) => {
+    if (!req.user || req.user.admin !== true) {
+      return res.status(403).json({ error: 'Administrator access required' });
+    }
+    return next();
   },
 };
 
@@ -137,11 +154,12 @@ async function startServer(mountPath, router) {
     const s = app.listen(0, '127.0.0.1', () => resolve(s));
   });
   const base = `http://127.0.0.1:${server.address().port}`;
-  const call = async (method, urlPath, { uid, body, raw, headers } = {}) => {
+  const call = async (method, urlPath, { uid, admin: isAdmin, body, raw, headers } = {}) => {
     const res = await fetch(`${base}${urlPath}`, {
       method,
       headers: {
         ...(uid ? { 'x-test-uid': uid } : {}),
+        ...(isAdmin ? { 'x-test-admin': 'true' } : {}),
         ...(body ? { 'Content-Type': 'application/json' } : {}),
         ...(headers || {}),
       },

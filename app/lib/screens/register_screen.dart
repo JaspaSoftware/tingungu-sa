@@ -1,16 +1,41 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'home_screen.dart';
+import '../services/account_profile_provisioner.dart';
+import '../utils/auth_error_messages.dart';
 import 'login_screen.dart';
 import 'terms_screen.dart';
 
+class RegistrationAccount {
+  const RegistrationAccount({
+    required this.uid,
+    this.email,
+    this.displayName,
+    this.photoUrl,
+  });
+
+  final String uid;
+  final String? email;
+  final String? displayName;
+  final String? photoUrl;
+}
+
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  const RegisterScreen({
+    super.key,
+    this.createEmailAccount,
+    this.googleAccountSignIn,
+    this.profileProvisioner,
+  });
+
+  final Future<RegistrationAccount> Function(String email, String password)?
+  createEmailAccount;
+  final Future<RegistrationAccount?> Function()? googleAccountSignIn;
+  final AccountProfileProvisioner? profileProvisioner;
+
   static const id = "registerScreen";
 
   @override
@@ -29,9 +54,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _agreedToTerms = false;
   bool _obscurePassword = true;
   bool _isLoading = false;
+  RegistrationAccount? _pendingAccount;
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseAuth get _auth => FirebaseAuth.instance;
 
   @override
   void dispose() {
@@ -54,41 +79,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _isLoading = true;
       });
 
+      var authenticationSucceeded = _pendingAccount != null;
       try {
-        UserCredential userCredential = await _auth
-            .createUserWithEmailAndPassword(
-              email: _emailController.text.trim(),
-              password: _passwordController.text,
+        final email = _emailController.text.trim();
+        final account =
+            _pendingAccount ??
+            await (widget.createEmailAccount?.call(
+                  email,
+                  _passwordController.text,
+                ) ??
+                _createEmailAccount(email, _passwordController.text));
+        _pendingAccount = account;
+        authenticationSucceeded = true;
+
+        await (widget.profileProvisioner ?? AccountProfileProvisioner.instance)
+            .ensureProfile(
+              uid: account.uid,
+              email: account.email,
+              displayName: _nameController.text.trim(),
+              photoUrl: account.photoUrl,
             );
 
-        final uid = userCredential.user?.uid;
-
-        await _firestore.collection('users').doc(uid).set({
-          'displayname': _nameController.text.trim().isEmpty
-              ? 'New User'
-              : _nameController.text.trim(),
-          'email': _emailController.text.trim(),
-          'cellnumber': '',
-          'avatar': '',
-          'society': '',
-          'dob': '',
-          'profile_completed': false,
-        });
-
+        if (!mounted) return;
+        _pendingAccount = null;
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("✅ Account created successfully!"),
+          const SnackBar(
+            content: Text("✅ Account created successfully!"),
             backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
+            duration: Duration(seconds: 3),
           ),
         );
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
       } on FirebaseAuthException catch (e) {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
 
         if (e.code == 'email-already-in-use') {
           final email = _emailController.text.trim();
@@ -98,18 +122,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
           return;
         }
 
-        String message = "Something went wrong";
-        if (e.code == 'invalid-email') {
-          message = "Please enter a valid email address.";
-        } else if (e.code == 'weak-password') {
-          message = "The password provided is too weak.";
-        } else if (e.message != null) {
-          message = e.message!;
+        if (mounted) _showErrorMessage(registrationErrorMessage(e));
+      } catch (error) {
+        if (kDebugMode) {
+          debugPrint('Email account provisioning failed.');
         }
-
-        _showErrorMessage(message);
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        _showErrorMessage(
+          authenticationSucceeded
+              ? "Your account was created, but we couldn't finish setting up your profile. Please retry account setup."
+              : 'Registration could not be completed. Please try again.',
+        );
       }
     }
+  }
+
+  Future<RegistrationAccount> _createEmailAccount(
+    String email,
+    String password,
+  ) async {
+    final credential = await _auth.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+    final user = credential.user;
+    if (user == null) {
+      throw const AccountProfileProvisioningException(
+        'Firebase did not return the authenticated user.',
+      );
+    }
+
+    return RegistrationAccount(
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      photoUrl: user.photoURL,
+    );
   }
 
   void _showErrorMessage(String message) {
@@ -188,11 +237,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
               'lib/assets/images/logo.png',
               height: 24,
               width: 24,
-              errorBuilder: (context, error, stackTrace) => const Icon(
-                Icons.church,
-                size: 24,
-                color: Color(0xFF3B0D11),
-              ),
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.church, size: 24, color: Color(0xFF3B0D11)),
             ),
           ],
         ),
@@ -255,75 +301,88 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _signInWithGoogle() async {
     setState(() => _isLoading = true);
+    var authenticationSucceeded = _pendingAccount != null;
     try {
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        serverClientId:
-            '226294099341-d6n78vt0atgifcgmignq528bvfhq9t0u.apps.googleusercontent.com',
-      );
-
-      try {
-        await googleSignIn.signOut();
-      } catch (_) {}
-
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-      if (googleUser == null) {
+      final account =
+          _pendingAccount ??
+          await (widget.googleAccountSignIn?.call() ?? _createGoogleAccount());
+      if (account == null) {
         if (mounted) setState(() => _isLoading = false);
         return;
       }
+      _pendingAccount = account;
+      authenticationSucceeded = true;
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
-      if (googleAuth.idToken == null) {
-        throw Exception(
-          "Google ID Token is missing. Please ensure your SHA-1 fingerprint is registered in Firebase Console.",
-        );
-      }
-
-      final OAuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      final UserCredential userCredential = await _auth.signInWithCredential(
-        credential,
-      );
-      final User? user = userCredential.user;
-
-      if (user != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user_id', user.uid);
-
-        final docRef = _firestore.collection('users').doc(user.uid);
-        final doc = await docRef.get();
-
-        if (!doc.exists) {
-          await docRef.set({
-            'displayname': user.displayName ?? 'New User',
-            'email': user.email ?? '',
-            'avatar': user.photoURL ?? '',
-            'cellnumber': '',
-            'society': '',
-            'dob': '',
-            'profile_completed': false,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-        }
-
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
+      await (widget.profileProvisioner ?? AccountProfileProvisioner.instance)
+          .ensureProfile(
+            uid: account.uid,
+            email: account.email,
+            displayName: account.displayName,
+            photoUrl: account.photoUrl,
           );
-        }
-      }
+      if (!mounted) return;
+      _pendingAccount = null;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).clearSnackBars();
     } catch (e) {
-      if (kDebugMode) print('Google Sign-In Error: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
-        _showErrorMessage("Google Sign-In failed: $e");
+      if (kDebugMode) {
+        debugPrint('Google sign-in or profile provisioning failed.');
       }
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showErrorMessage(
+        authenticationSucceeded
+            ? "Your account was created, but we couldn't finish setting up your profile. Please retry account setup."
+            : 'Google Sign-In could not be completed. Please try again.',
+      );
     }
+  }
+
+  Future<RegistrationAccount?> _createGoogleAccount() async {
+    final GoogleSignIn googleSignIn = GoogleSignIn(
+      serverClientId:
+          '226294099341-d6n78vt0atgifcgmignq528bvfhq9t0u.apps.googleusercontent.com',
+    );
+
+    try {
+      await googleSignIn.signOut();
+    } catch (_) {}
+
+    final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+    if (googleUser == null) return null;
+
+    final GoogleSignInAuthentication googleAuth =
+        await googleUser.authentication;
+
+    if (googleAuth.idToken == null) {
+      throw Exception(
+        "Google ID Token is missing. Please ensure your SHA-1 fingerprint is registered in Firebase Console.",
+      );
+    }
+
+    final OAuthCredential credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    final UserCredential userCredential = await _auth.signInWithCredential(
+      credential,
+    );
+    final User? user = userCredential.user;
+    if (user == null) {
+      throw const AccountProfileProvisioningException(
+        'Firebase did not return the authenticated user.',
+      );
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_id', user.uid);
+    return RegistrationAccount(
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      photoUrl: user.photoURL,
+    );
   }
 
   @override
@@ -434,7 +493,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),
-                          validator: (value) => value != _passwordController.text
+                          validator: (value) =>
+                              value != _passwordController.text
                               ? "Passwords do not match"
                               : null,
                         ),

@@ -4,7 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../services/public_profile_service.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../services/user_service.dart';
 
 class AvatarUtils {
   /// Opens a full-screen, pinch-to-zoom view of an avatar. Purely for
@@ -69,7 +68,7 @@ class AvatarUtils {
   /// Preset avatars relating to the Methodist Church (Disabled for current version)
   static const List<Map<String, String>> presetAvatars = [];
 
-  /// Saves the updated avatar URL or base64 string to Firestore & backend
+  /// Saves the avatar to the private and public Firestore profile projections.
   static Future<bool> saveAvatar(
     BuildContext context,
     String avatarValue, {
@@ -87,12 +86,6 @@ class AvatarUtils {
         'avatar': avatarValue,
       }, SetOptions(merge: true));
       await PublicProfileService.update({'avatar': avatarValue});
-
-      // 2. Sync with MySQL backend in background asynchronously without blocking UI
-      UserService.updateUserProfile(
-        userId: user.uid,
-        avatar: avatarValue,
-      ).catchError((_) => <String, dynamic>{});
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

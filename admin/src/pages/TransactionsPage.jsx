@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collectionGroup, collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collectionGroup, onSnapshot, query } from 'firebase/firestore';
 import { FiDollarSign } from 'react-icons/fi';
 import { format } from 'date-fns';
+import { mapTransactionDocument } from '../utils/transactions';
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState([]);
+  const [loadError, setLoadError] = useState('');
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    const unsubs = [];
-
     const processDocs = (snap) => {
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const list = snap.docs.map(mapTransactionDocument);
       list.sort((a, b) => {
         const da = a.createdAt || a.date || a.timestamp;
         const db = b.createdAt || b.date || b.timestamp;
@@ -22,37 +22,27 @@ export default function TransactionsPage() {
         return tB - tA;
       });
       setTransactions(list);
+      setLoadError('');
     };
 
-    try {
-      const q = query(collectionGroup(db, 'transactions'));
-      const unsub = onSnapshot(q, processDocs, err => {
-        console.warn("collectionGroup transactions subscription failed, falling back to top-level collection...", err);
-        const q2 = query(collection(db, 'transactions'));
-        const unsub2 = onSnapshot(q2, processDocs);
-        unsubs.push(unsub2);
-      });
-      unsubs.push(unsub);
-    } catch (err) {
-      console.warn("collectionGroup query creation failed, falling back...", err);
-      unsubs.push(onSnapshot(collection(db, 'transactions'), processDocs));
-    }
-
-    return () => unsubs.forEach(u => u());
+    return onSnapshot(
+      query(collectionGroup(db, 'transactions')),
+      processDocs,
+      err => {
+        console.error('Could not load the transaction ledger:', err);
+        setLoadError('Transaction data is unavailable. Check admin access and try again.');
+      },
+    );
   }, []);
 
   const types = ['all', 'giving', 'topup', 'airtime'];
 
   const filtered = transactions.filter(t => {
     const typeLower = (t.type || '').toLowerCase();
-    let matchType = false;
-    if (filter === 'all') {
-      matchType = true;
-    } else if (filter === 'topup') {
-      matchType = typeLower.includes('topup') || typeLower.includes('top-up');
-    } else {
-      matchType = typeLower.includes(filter);
-    }
+    const matchType = filter === 'all'
+      || (filter === 'topup'
+        ? typeLower.includes('topup') || typeLower.includes('top-up')
+        : typeLower.includes(filter));
     const matchSearch = (t.description || t.type || '').toLowerCase().includes(search.toLowerCase());
     return matchType && matchSearch;
   });
@@ -99,6 +89,7 @@ export default function TransactionsPage() {
       </div>
 
       <div className="card">
+        {loadError && <div className="alert alert-error">{loadError}</div>}
         {filtered.length === 0 ? (
           <div className="empty-state">
             <FiDollarSign />
@@ -127,7 +118,9 @@ export default function TransactionsPage() {
                       {(t.type || '').toLowerCase().includes('topup') ? '+' : '-'}R {(Math.abs(Number(t.amount)) || 0).toFixed(2)}
                     </td>
                     <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-secondary)' }}>
-                      {t.userId?.slice(0, 12) || '—'}...
+                      {t.userId
+                        ? `${t.userId.slice(0, 12)}${t.userId.length > 12 ? '...' : ''}`
+                        : 'Unknown user'}
                     </td>
                     <td style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                       {(() => {

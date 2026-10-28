@@ -1,23 +1,24 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 
+import '../config/app_config.dart';
 import '../data/media_video_model.dart';
+import 'api_client.dart';
 
 class MediaService {
-  static const String _baseUrl = 'https://backend.tingungu.co.za';
+  static const String _baseUrl = AppConfig.legacyBackendUrl;
+  static final ApiClient _api = ApiClient.shared;
 
   /// Get latest media videos (for home page)
   static Future<List<MediaVideo>> getLatestVideos({int limit = 5}) async {
     try {
-      final response = await http
-          .get(Uri.parse('$_baseUrl/get_latest_videos.php?limit=$limit'))
-          .timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
+      final response = await _api.get(
+        'get_latest_videos.php',
+        baseUrl: _baseUrl,
+        queryParameters: {'limit': '$limit'},
+        timeout: const Duration(seconds: 10),
+      );
+      final data = response.body;
+      if (data is Map<String, dynamic>) {
         if (data['success'] == true && data['data'] is List) {
           List<MediaVideo> videos = [];
           for (var videoData in data['data']) {
@@ -39,13 +40,13 @@ class MediaService {
   /// Get all media videos (for media page)
   static Future<List<MediaVideo>> getAllVideos() async {
     try {
-      final response = await http
-          .get(Uri.parse('$_baseUrl/get_all_videos.php'))
-          .timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
+      final response = await _api.get(
+        'get_all_videos.php',
+        baseUrl: _baseUrl,
+        timeout: const Duration(seconds: 10),
+      );
+      final data = response.body;
+      if (data is Map<String, dynamic>) {
         if (data['success'] == true && data['data'] is List) {
           List<MediaVideo> videos = [];
           for (var videoData in data['data']) {

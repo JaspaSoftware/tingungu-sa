@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, updateDoc, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { FiPlus, FiTrash2, FiEdit2, FiHeart } from 'react-icons/fi';
+import { API_BASE_URL } from '../config';
+import { apiFetch } from '../api';
 
 function Modal({ title, onClose, onSave, loading, children }) {
   return (
@@ -44,23 +46,63 @@ export default function GivingPage() {
     setLoading(true);
     const data = { name: form.name, description: form.description, minAmount: Number(form.minAmount) || 0, maxAmount: Number(form.maxAmount) || 0, active: form.active };
     try {
-      if (editing) {
-        await updateDoc(doc(db, 'giving_options', editing.id), data);
-      } else {
-        await addDoc(collection(db, 'giving_options'), { ...data, createdAt: serverTimestamp() });
+      const response = await apiFetch(
+        `${API_BASE_URL}/giving-options${editing ? `/${encodeURIComponent(editing.id)}` : ''}`,
+        {
+          method: editing ? 'PUT' : 'POST',
+          body: JSON.stringify(data),
+        },
+      );
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || 'Failed to save giving option.');
       }
       setShowModal(false);
+    } catch (error) {
+      alert(error.message || 'Failed to save giving option.');
     } finally {
       setLoading(false);
     }
   };
 
   const remove = async (id) => {
-    if (confirm('Delete this giving option?')) await deleteDoc(doc(db, 'giving_options', id));
+    if (!confirm('Delete this giving option?')) return;
+    try {
+      const response = await apiFetch(
+        `${API_BASE_URL}/giving-options/${encodeURIComponent(id)}`,
+        { method: 'DELETE' },
+      );
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || 'Failed to delete giving option.');
+      }
+    } catch (error) {
+      alert(error.message || 'Failed to delete giving option.');
+    }
   };
 
   const toggleActive = async (o) => {
-    await updateDoc(doc(db, 'giving_options', o.id), { active: !o.active });
+    try {
+      const response = await apiFetch(
+        `${API_BASE_URL}/giving-options/${encodeURIComponent(o.id)}`,
+        {
+          method: 'PUT',
+          body: JSON.stringify({
+            name: o.name,
+            description: o.description || '',
+            minAmount: o.minAmount || 0,
+            maxAmount: o.maxAmount || 0,
+            active: !o.active,
+          }),
+        },
+      );
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || 'Failed to update giving option.');
+      }
+    } catch (error) {
+      alert(error.message || 'Failed to update giving option.');
+    }
   };
 
   return (

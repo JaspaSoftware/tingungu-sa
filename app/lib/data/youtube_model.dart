@@ -1,8 +1,7 @@
-// File: lib/services/youtube_model.dart
-
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+
+import '../config/app_config.dart';
+import '../services/api_client.dart';
 
 class YoutubeVideo {
   final String id;
@@ -34,36 +33,47 @@ class YoutubeVideo {
 }
 
 class YoutubeService {
-  // REPLACE WITH YOUR CREDENTIALS
-  static const String apiKey = 'YOUR_YOUTUBE_API_KEY';
-  static const String playlistId = 'YOUR_PLAYLIST_ID'; // Tingungu TV uploads playlist
+  static const String apiKey = AppConfig.youtubeApiKey;
+  static const String playlistId = AppConfig.youtubePlaylistId;
 
-  static const String _baseUrl =
-      'https://www.googleapis.com/youtube/v3/playlistItems';
+  static const String _baseUrl = 'https://www.googleapis.com/youtube/v3';
+  static final ApiClient _api = ApiClient.shared;
 
   /// Fetch videos from Tingungu TV channel
-  static Future<List<YoutubeVideo>> getChannelVideos({int maxResults = 12}) async {
-    try {
-      final url = Uri.parse(
-        '$_baseUrl?part=snippet&playlistId=$playlistId&maxResults=$maxResults&key=$apiKey&order=date',
+  static Future<List<YoutubeVideo>> getChannelVideos({
+    int maxResults = 12,
+  }) async {
+    if (apiKey.isEmpty || playlistId.isEmpty) {
+      debugPrint(
+        'YouTube is not configured. Set YOUTUBE_API_KEY and YOUTUBE_PLAYLIST_ID.',
       );
+      return [];
+    }
 
-      final response = await http
-          .get(url)
-          .timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
+    try {
+      final response = await _api.get(
+        'playlistItems',
+        baseUrl: _baseUrl,
+        queryParameters: {
+          'part': 'snippet',
+          'playlistId': playlistId,
+          'maxResults': '$maxResults',
+          'key': apiKey,
+          'order': 'date',
+        },
+        timeout: const Duration(seconds: 15),
+      );
+      final data = response.body;
+      if (data is Map<String, dynamic>) {
         if (data['items'] is List) {
           List<YoutubeVideo> videos = [];
           for (var item in data['items']) {
-            videos.add(YoutubeVideo.fromJson(item));
+            if (item is Map<String, dynamic>) {
+              videos.add(YoutubeVideo.fromJson(item));
+            }
           }
           return videos;
         }
-      } else {
-        throw Exception('Failed to load videos: ${response.statusCode}');
       }
 
       return [];

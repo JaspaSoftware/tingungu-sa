@@ -2,7 +2,6 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Set the admin custom claim from a trusted server/Admin SDK, never from a client.
     function signedIn() {
       return request.auth != null;
     }
@@ -15,7 +14,7 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == userId;
     }
 
-    function mutableProfileFields() {
+    function ownerCreateFields() {
       return [
         'displayname',
         'display_name',
@@ -28,26 +27,181 @@ service cloud.firestore {
         'dob',
         'profile_completed',
         'read_notices',
-        'presence_status',
-        'presence_active',
-        'presence_updated_at'
+        'createdAt',
+        'firstname',
+        'lastname',
+        'first_name',
+        'last_name'
       ];
     }
 
-    function profileFields() {
-      return mutableProfileFields().concat(['createdAt']);
+    function ownerEditableFields() {
+      return [
+        'displayname',
+        'display_name',
+        'cellnumber',
+        'cellphone',
+        'avatar',
+        'society',
+        'society_name',
+        'dob',
+        'profile_completed',
+        'read_notices',
+        'firstname',
+        'lastname',
+        'first_name',
+        'last_name'
+      ];
     }
+
+    function adminEditableFields() {
+      return [
+        'displayname',
+        'display_name',
+        'firstname',
+        'lastname',
+        'first_name',
+        'last_name'
+      ];
+    }
+
+    function validProfileTypes(data) {
+      return (!('displayname' in data) ||
+          (data.displayname is string && data.displayname.size() <= 100))
+        && (!('display_name' in data) ||
+          (data.display_name is string && data.display_name.size() <= 100))
+        && (!('email' in data) ||
+          (data.email is string && data.email.size() <= 254))
+        && (!('cellnumber' in data) ||
+          (data.cellnumber is string && data.cellnumber.size() <= 30))
+        && (!('cellphone' in data) ||
+          (data.cellphone is string && data.cellphone.size() <= 30))
+        && (!('avatar' in data) ||
+          (data.avatar is string && data.avatar.size() <= 300000))
+        && (!('society' in data) ||
+          (data.society is string && data.society.size() <= 150))
+        && (!('society_name' in data) ||
+          (data.society_name is string && data.society_name.size() <= 150))
+        && (!('dob' in data) ||
+          (data.dob is string && data.dob.size() <= 40))
+        && (!('profile_completed' in data) ||
+          data.profile_completed is bool)
+        && (!('read_notices' in data) ||
+          (data.read_notices is list && data.read_notices.size() <= 500))
+        && (!('createdAt' in data) || data.createdAt is timestamp)
+        && (!('firstname' in data) ||
+          (data.firstname is string && data.firstname.size() <= 100))
+        && (!('lastname' in data) ||
+          (data.lastname is string && data.lastname.size() <= 100))
+        && (!('first_name' in data) ||
+          (data.first_name is string && data.first_name.size() <= 100))
+        && (!('last_name' in data) ||
+          (data.last_name is string && data.last_name.size() <= 100));
+    }
+
+    function publicProfileFields() {
+      return [
+        'displayname',
+        'avatar',
+        'society',
+        'society_name',
+        'presence_status',
+        'presence_active',
+        'presence_updated_at',
+        'presence_backgrounded_at'
+      ];
+    }
+
+    function validPublicProfile(data) {
+      return (!('displayname' in data) ||
+          (data.displayname is string && data.displayname.size() <= 100))
+        && (!('avatar' in data) ||
+          (data.avatar is string && data.avatar.size() <= 300000))
+        && (!('society' in data) ||
+          (data.society is string && data.society.size() <= 150))
+        && (!('society_name' in data) ||
+          (data.society_name is string && data.society_name.size() <= 150))
+        && (!('presence_status' in data) ||
+          data.presence_status in ['online', 'busy', 'away'])
+        && (!('presence_active' in data) || data.presence_active is bool)
+        && (!('presence_updated_at' in data) ||
+          data.presence_updated_at is timestamp)
+        && (!('presence_backgrounded_at' in data) ||
+          data.presence_backgrounded_at == null
+          || data.presence_backgrounded_at is timestamp);
+    }
+
+    function freshPresenceTimestamps(data, changedFields) {
+      return (!changedFields.hasAny(['presence_updated_at'])
+          || data.presence_updated_at == request.time)
+        && (!changedFields.hasAny(['presence_backgrounded_at'])
+          || data.presence_backgrounded_at == null
+          || data.presence_backgrounded_at == request.time);
+    }
+
+    function validNotice(data) {
+      return data.keys().hasOnly(['title', 'message', 'tag', 'createdAt'])
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 150
+        && data.message is string && data.message.size() > 0 && data.message.size() <= 5000
+        && (!('tag' in data) || (data.tag is string && data.tag.size() <= 100))
+        && (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function validMedia(data) {
+      return data.keys().hasOnly([
+          'title', 'url', 'thumbnail', 'description', 'createdAt'
+        ])
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 150
+        && data.url is string
+        && data.url.matches('https://(www\\.)?(youtube\\.com|youtu\\.be)/.*')
+        && (!('thumbnail' in data) ||
+          (data.thumbnail is string
+            && data.thumbnail.matches('https://img\\.youtube\\.com/.*')))
+        && (!('description' in data) ||
+          (data.description is string && data.description.size() <= 5000))
+        && (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function validEvent(data) {
+      return data.keys().hasOnly([
+          'month', 'date_start', 'date_end', 'description', 'venue', 'createdAt'
+        ])
+        && data.month is string && data.month.size() <= 20
+        && data.description is string && data.description.size() > 0
+        && data.description.size() <= 1000
+        && (!('date_start' in data) ||
+          (data.date_start is string && data.date_start.size() <= 40))
+        && (!('date_end' in data) ||
+          data.date_end == null
+          || (data.date_end is string && data.date_end.size() <= 40))
+        && (!('venue' in data) ||
+          data.venue == null
+          || (data.venue is string && data.venue.size() <= 200))
+        && (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
       allow create: if isOwner(userId)
-        && request.resource.data.keys().hasOnly(profileFields());
-      allow update: if isAdmin() || (
-        isOwner(userId)
-        && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(mutableProfileFields())
-      );
-      allow delete: if isAdmin();
+        && request.resource.data.keys().hasOnly(ownerCreateFields())
+        && validProfileTypes(request.resource.data)
+        && (!('email' in request.resource.data)
+          || request.resource.data.email == request.auth.token.email)
+        && (!('createdAt' in request.resource.data)
+          || request.resource.data.createdAt == request.time);
+      allow update: if (
+          isOwner(userId)
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(ownerEditableFields())
+          && validProfileTypes(request.resource.data)
+        ) || (
+          isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(adminEditableFields())
+          && validProfileTypes(request.resource.data)
+        );
+      allow delete: if false;
 
       match /transactions/{transactionId} {
         allow get, list: if isOwner(userId) || isAdmin();
@@ -56,14 +210,25 @@ service cloud.firestore {
     }
 
     match /public_profiles/{userId} {
-      allow read: if signedIn();
-      allow create, update: if isOwner(userId)
-        && request.resource.data.keys().hasOnly([
-          'displayname', 'avatar', 'society', 'society_name',
-          'presence_status', 'presence_active', 'presence_updated_at',
-          'presence_backgrounded_at'
-        ]);
-      allow delete: if isAdmin();
+      allow get: if signedIn()
+        && resource.data.keys().hasOnly(publicProfileFields());
+      allow list: if false;
+      allow create: if isOwner(userId)
+        && request.resource.data.keys().hasOnly(publicProfileFields())
+        && validPublicProfile(request.resource.data)
+        && freshPresenceTimestamps(
+          request.resource.data,
+          request.resource.data.keys()
+        );
+      allow update: if isOwner(userId)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(publicProfileFields())
+        && validPublicProfile(request.resource.data)
+        && freshPresenceTimestamps(
+          request.resource.data,
+          request.resource.data.diff(resource.data).affectedKeys()
+        );
+      allow delete: if false;
     }
 
     match /{path=**}/transactions/{transactionId} {
@@ -72,59 +237,55 @@ service cloud.firestore {
     }
 
     match /media/{documentId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read: if signedIn();
+      allow create, update: if isAdmin() && validMedia(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /notices/{documentId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read: if signedIn();
+      allow create, update: if isAdmin() && validNotice(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /giving_options/{documentId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read: if signedIn();
+      allow create, update, delete: if false;
     }
 
     match /events/{documentId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read: if signedIn();
+      allow create, update: if isAdmin() && validEvent(request.resource.data);
+      allow delete: if isAdmin();
     }
 
-    // Societies now live in MySQL and are served by the authenticated API.
-    // Info hub directory (districts, circuits, ministers...): public read, admin write.
     match /districts/{documentId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if false;
     }
 
     match /societies/{documentId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if false;
     }
 
     match /circuits/{documentId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if false;
     }
 
     match /ministers/{documentId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if false;
     }
 
     match /categories/{documentId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if false;
     }
 
     match /appointments/{documentId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if false;
     }
+
     match /communities/{documentId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
     }
 
     match /givings/{givingId} {
@@ -132,16 +293,32 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /payments/{paymentId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /airtime_orders/{orderId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     match /admin_settings/{documentId} {
-      allow read, write: if isAdmin();
+      allow read, write: if false;
     }
 
     match /test_program_emails/{documentId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin();
+      allow write: if false;
     }
 
     match /support_tickets/{ticketId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin();
+      allow create, delete: if false;
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status'])
+        && request.resource.data.status in ['open', 'pending', 'resolved', 'closed'];
     }
   }
 }

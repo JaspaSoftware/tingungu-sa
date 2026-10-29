@@ -39,7 +39,40 @@ function parseAmount(value) {
   return amount;
 }
 
-async function describePurpose(body) {
+function configuredLimitCents(value) {
+  if (value == null || value === '' || value === 0 || value === '0') return null;
+  if (typeof value !== 'number' && typeof value !== 'string') {
+    throw Object.assign(new Error('Giving option payment limits are invalid'), { status: 500 });
+  }
+
+  const limit = Number(value);
+  const cents = Math.round(limit * 100);
+  if (!Number.isFinite(limit) || limit < 0 || !Number.isSafeInteger(cents)) {
+    throw Object.assign(new Error('Giving option payment limits are invalid'), { status: 500 });
+  }
+  return cents || null;
+}
+
+function validateGivingAmount(amount, optionData) {
+  const minCents = configuredLimitCents(optionData.minAmount);
+  const maxCents = configuredLimitCents(optionData.maxAmount);
+  if (minCents != null && maxCents != null && minCents > maxCents) {
+    throw Object.assign(new Error('Giving option payment limits are invalid'), { status: 500 });
+  }
+
+  const amountCents = Math.round(amount * 100);
+  if (
+    (minCents != null && amountCents < minCents) ||
+    (maxCents != null && amountCents > maxCents)
+  ) {
+    throw Object.assign(
+      new Error('Amount is outside the allowed range for this giving option'),
+      { status: 400 },
+    );
+  }
+}
+
+async function describePurpose(body, amount) {
   const purpose = body.purpose;
   const note = String(body.note || '').slice(0, 200);
   if (purpose === 'topup') {
@@ -47,11 +80,13 @@ async function describePurpose(body) {
   }
   if (purpose === 'giving') {
     const option = await db().collection('giving_options').doc(String(body.givingOptionId || 'x')).get();
-    if (!option.exists) return null;
+    if (!option.exists || option.data().active === false) return null;
+    const optionData = option.data();
+    validateGivingAmount(amount, optionData);
     return {
       purpose,
-      label: `Giving: ${option.data().name || 'Offering'}`,
-      givingType: option.data().name || 'Offering',
+      label: `Giving: ${optionData.name || 'Offering'}`,
+      givingType: optionData.name || 'Offering',
       note,
     };
   }
@@ -90,7 +125,7 @@ router.post('/wallet-pay', requireAuth, async (req, res) => {
     if (req.body.purpose !== 'giving') {
       return res.status(400).json({ error: 'Invalid purpose' });
     }
-    const info = await describePurpose(req.body);
+    const info = await describePurpose(req.body, amount);
     if (!info) return res.status(400).json({ error: 'Invalid giving option' });
 
     const uid = req.user.uid;
@@ -124,7 +159,7 @@ router.post('/payfast/create', requireAuth, async (req, res) => {
   try {
     const amount = parseAmount(req.body.amount);
     if (!amount) return res.status(400).json({ error: 'Invalid amount' });
-    const info = await describePurpose(req.body);
+    const info = await describePurpose(req.body, amount);
     if (!info) return res.status(400).json({ error: 'Invalid payment request' });
 
     const paymentRef = db().collection('payments').doc();
@@ -156,8 +191,10 @@ router.post('/payfast/create', requireAuth, async (req, res) => {
       processUrl: `${payfastHost(cfg.sandbox)}/eng/process`,
       formData,
     });
-  } catch {
-    res.status(500).json({ error: 'Could not start payment' });
+  } catch (error) {
+    res.status(error.status || 500).json({
+      error: error.status ? error.message : 'Could not start payment',
+    });
   }
 });
 
@@ -205,8 +242,16 @@ router.post('/payfast/notify', express.text({ type: '*/*', limit: '20kb' }), asy
       if (Math.abs(Number(data.amount_gross) - payment.amount) > 0.001) {
         throw Object.assign(new Error('amount'), { status: 400 });
       }
+      if (data.payment_status === 'PENDING') {
+        tx.update(paymentRef, { pfStatus: 'PENDING' });
+        return;
+      }
+      if (data.payment_status === 'FAILED') {
+        tx.update(paymentRef, { status: 'failed', pfStatus: 'FAILED' });
+        return;
+      }
       if (data.payment_status !== 'COMPLETE') {
-        tx.update(paymentRef, { status: 'failed', pfStatus: data.payment_status || '' });
+        tx.update(paymentRef, { pfStatus: data.payment_status || '' });
         return;
       }
       const userRef = db().collection('users').doc(payment.uid);

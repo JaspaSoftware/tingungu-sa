@@ -31,7 +31,11 @@ jobs:
         run: |
           cd app
           flutter pub get
-          flutter build web --release
+          flutter test
+          flutter build web --release --base-href /app/ --dart-define=YOUTUBE_API_KEY="$YOUTUBE_API_KEY" --dart-define=YOUTUBE_PLAYLIST_ID="$YOUTUBE_PLAYLIST_ID"
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          YOUTUBE_PLAYLIST_ID: ${{ vars.YOUTUBE_PLAYLIST_ID }}
 
       # 2. Setup Node.js for Admin
       - name: Setup Node.js
@@ -43,15 +47,20 @@ jobs:
         run: |
           cd admin
           npm install
+          node -e "for (const key of ['VITE_FIREBASE_API_KEY', 'VITE_FIREBASE_AUTH_DOMAIN', 'VITE_FIREBASE_PROJECT_ID', 'VITE_FIREBASE_STORAGE_BUCKET', 'VITE_FIREBASE_MESSAGING_SENDER_ID', 'VITE_FIREBASE_APP_ID']) { if (!process.env[key]) { console.error(key + ' must be configured in GitHub Actions secrets'); process.exit(1); } }"
           npm run build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
 
       # 3. Prepare Deployment Directory (Merge builds)
       - name: Merge Static Assets
         run: |
-          mkdir -p deploy/admin
-          cp -r app/build/web/* deploy/
-          cp -r admin/dist/* deploy/admin/
-          cp staticwebapp.config.json deploy/
+          node scripts/prepare-deploy.js
 
       # 4. Build and Deploy to Azure Static Web Apps
       - name: Build And Deploy

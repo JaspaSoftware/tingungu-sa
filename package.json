@@ -15,7 +15,10 @@
     "dev:admin": "npm --prefix admin run dev",
     "build:admin": "npm --prefix admin run build",
     "preview:admin": "npm --prefix admin run preview",
-    "lint:admin": "npm --prefix admin run lint"
+    "lint:admin": "npm --prefix admin run lint",
+    "check:release": "npm --prefix api test && npm --prefix admin run build",
+    "build:all": "npm run build:admin && npm --prefix api test",
+    "prepare:deploy": "node scripts/prepare-deploy.js"
   },
   "workspaces": [
     "admin",

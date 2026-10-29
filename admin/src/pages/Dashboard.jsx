@@ -1,21 +1,12 @@
 ﻿import { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
-import { FiUsers, FiDollarSign, FiBell, FiVideo, FiTrendingUp, FiHeart, FiShoppingBag, FiMessageSquare } from 'react-icons/fi';
+import { collectionGroup, collection, onSnapshot, query } from 'firebase/firestore';
+import { FiUsers, FiBell, FiVideo, FiShoppingBag } from 'react-icons/fi';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { API_BASE_URL } from '../config';
 import { apiFetch } from '../api';
 
 const COLORS = ['#3B0D11', '#FB8B24', '#10b981', '#3b82f6', '#8b5cf6'];
-
-const mockRevenueData = [
-  { month: 'Jan', giving: 4200 },
-  { month: 'Feb', giving: 5100 },
-  { month: 'Mar', giving: 3800 },
-  { month: 'Apr', giving: 6200 },
-  { month: 'May', opening: 5400 },
-  { month: 'Jun', giving: 7100 },
-];
 
 export default function Dashboard() {
   const [userCount, setUserCount] = useState(null);
@@ -23,7 +14,8 @@ export default function Dashboard() {
   const [mediaCount, setMediaCount] = useState(null);
   const [sqlStats, setSqlStats] = useState({ districts: 0, circuits: 0, societies: 0, ministers: 0 });
   const [givingDist, setGivingDist] = useState([]);
-  const [revenueData, setRevenueData] = useState(mockRevenueData);
+  const [revenueData, setRevenueData] = useState([]);
+  const [transactionError, setTransactionError] = useState('');
 
   useEffect(() => {
     const unsubs = [];
@@ -66,9 +58,7 @@ export default function Dashboard() {
 
     const processTransactions = (txList) => {
       const revSlots = getLast6Months();
-      let hasRealRevenue = false;
       const givingMap = {};
-      let hasRealGiving = false;
 
       txList.forEach(t => {
         const txDate = t.createdAt || t.date || t.timestamp;
@@ -87,72 +77,34 @@ export default function Dashboard() {
         if (typeLower.includes('giving')) {
           if (slot) {
             slot.giving += amount;
-            hasRealRevenue = true;
           }
-          let optionName = 'Other';
           const match = (t.type || '').match(/Giving:\s*([^(:]+)/i);
-          if (match && match[1]) {
-            optionName = match[1].trim();
-          } else {
-            optionName = t.description || (t.type || '').replace(/giving:?/i, '').trim() || 'Giving';
-          }
+          const optionName = match?.[1]?.trim()
+            || t.description
+            || (t.type || '').replace(/giving:?/i, '').trim()
+            || 'Giving';
           givingMap[optionName] = (givingMap[optionName] || 0) + amount;
-          hasRealGiving = true;
         }
       });
 
-      if (hasRealRevenue) {
-        setRevenueData(revSlots);
-      } else {
-        setRevenueData(mockRevenueData);
-      }
-
-      if (hasRealGiving) {
-        const dist = Object.entries(givingMap).map(([name, value]) => ({ name, value }));
-        setGivingDist(dist);
-      } else {
-        // Fallback: fetch giving options and generate random values
-        const qOptions = query(collection(db, 'giving_options'));
-        const unsubOptions = onSnapshot(qOptions, snap => {
-          if (snap.size > 0) {
-            setGivingDist(snap.docs.map(d => ({ name: d.data().name || 'Option', value: Math.floor(Math.random() * 3000) + 500 })));
-          } else {
-            setGivingDist([
-              { name: 'Tithes', value: 2450 },
-              { name: 'Offerings', value: 1200 },
-              { name: 'Building Fund', value: 850 }
-            ]);
-          }
-        });
-        unsubs.push(unsubOptions);
-      }
+      setRevenueData(revSlots);
+      setGivingDist(Object.entries(givingMap).map(([name, value]) => ({ name, value })));
     };
 
-    // Listen to transactions
-    let txUnsub;
-    try {
-      const q = query(collectionGroup(db, 'transactions'));
-      txUnsub = onSnapshot(q, snap => {
+    const txUnsub = onSnapshot(
+      query(collectionGroup(db, 'transactions')),
+      snap => {
+        setTransactionError('');
         const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         processTransactions(list);
-      }, err => {
-        console.warn("collectionGroup transactions subscription failed, falling back to top-level collection...", err);
-        const q2 = query(collection(db, 'transactions'));
-        const unsub2 = onSnapshot(q2, snap => {
-          const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          processTransactions(list);
-        });
-        unsubs.push(unsub2);
-      });
-      unsubs.push(txUnsub);
-    } catch (err) {
-      console.warn("collectionGroup query failed, falling back...", err);
-      const unsub2 = onSnapshot(collection(db, 'transactions'), snap => {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        processTransactions(list);
-      });
-      unsubs.push(unsub2);
-    }
+      },
+      err => {
+        console.error('Could not load the transaction ledger:', err);
+        setTransactionError('Transaction data is unavailable. Check admin access and try again.');
+        processTransactions([]);
+      },
+    );
+    unsubs.push(txUnsub);
 
     return () => {
       unsubs.forEach(u => u());
@@ -221,9 +173,9 @@ export default function Dashboard() {
         <div className="card">
           <div className="card-header">
             <h3>Revenue Overview</h3>
-            <span className="badge badge-success">â†‘ 14% this month</span>
           </div>
           <div className="card-body" style={{ paddingTop: 16 }}>
+            {transactionError && <p className="alert alert-error">{transactionError}</p>}
             <ResponsiveContainer width="100%" height={220}>
               <AreaChart data={revenueData}>
                 <defs>
@@ -260,7 +212,7 @@ export default function Dashboard() {
               </ResponsiveContainer>
             ) : (
               <div className="empty-state" style={{ padding: '40px 0' }}>
-                <p>No giving data yet â€” seed giving options first.</p>
+                <p>No giving transactions recorded yet.</p>
               </div>
             )}
           </div>

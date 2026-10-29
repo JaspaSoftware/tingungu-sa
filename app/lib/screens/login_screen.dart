@@ -1,16 +1,29 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'home_screen.dart';
+import '../services/account_profile_provisioner.dart';
+import '../utils/auth_error_messages.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final String? initialEmail;
-  const LoginScreen({super.key, this.initialEmail});
+  final Future<bool> Function(String email, String password)? emailSignIn;
+  final Future<RegistrationAccount?> Function()? googleSignIn;
+  final Future<void> Function(String email)? passwordReset;
+  final AccountProfileProvisioner? profileProvisioner;
+
+  const LoginScreen({
+    super.key,
+    this.initialEmail,
+    this.emailSignIn,
+    this.googleSignIn,
+    this.passwordReset,
+    this.profileProvisioner,
+  });
   static const String id = "loginScreen";
 
   @override
@@ -25,8 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _isLoading = false;
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseAuth get _auth => FirebaseAuth.instance;
 
   @override
   void initState() {
@@ -46,12 +58,19 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _isLoading = true);
 
       try {
-        UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-        );
+        final email = _emailController.text.trim();
+        final password = _passwordController.text;
+        final signedIn = widget.emailSignIn != null
+            ? await widget.emailSignIn!(email, password)
+            : (await _auth.signInWithEmailAndPassword(
+                    email: email,
+                    password: password,
+                  )).user !=
+                  null;
 
-        if (userCredential.user != null && mounted) {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        if (signedIn) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text("✅ Login successful!"),
@@ -59,39 +78,23 @@ class _LoginScreenState extends State<LoginScreen> {
               duration: Duration(seconds: 2),
             ),
           );
-
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
-          );
         }
       } on FirebaseAuthException catch (e) {
+        if (!mounted) return;
         setState(() => _isLoading = false);
-
-        String message = "Login failed. Please try again.";
-        if (e.code == 'user-not-found' ||
-            e.code == 'wrong-password' ||
-            e.code == 'invalid-credential') {
-          message = "Invalid email or password.";
-        } else if (e.code == 'invalid-email') {
-          message = "Please enter a valid email address.";
-        } else if (e.code == 'user-disabled') {
-          message = "This user account has been disabled.";
-        }
-
-        if (mounted) {
+        final message = loginErrorMessage(e);
+        if (message != null) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(message), backgroundColor: Colors.red),
           );
         }
       } catch (e) {
+        if (!mounted) return;
         setState(() => _isLoading = false);
-        if (mounted) {
+        final message = loginErrorMessage(e);
+        if (message != null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("An error occurred: $e"),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text(message), backgroundColor: Colors.red),
           );
         }
       }
@@ -101,90 +104,109 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _signInWithGoogle() async {
     setState(() => _isLoading = true);
     try {
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        serverClientId:
-            '226294099341-d6n78vt0atgifcgmignq528bvfhq9t0u.apps.googleusercontent.com',
-      );
-
-      // Force sign-out first to ensure account picker dialog pops up and clear stale tokens
-      try {
-        await googleSignIn.signOut();
-      } catch (_) {}
-
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-      if (googleUser == null) {
-        if (mounted) setState(() => _isLoading = false);
+      if (widget.googleSignIn != null) {
+        final account = await widget.googleSignIn!();
+        if (!mounted) return;
+        if (account != null) {
+          await _ensureProfile(account);
+          if (!mounted) return;
+        }
+        setState(() => _isLoading = false);
         return;
       }
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
-      if (googleAuth.idToken == null) {
-        throw Exception(
-          "Google ID Token is missing. Please ensure your SHA-1 fingerprint is registered in Firebase Console.",
-        );
-      }
-
-      final OAuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      final UserCredential userCredential = await _auth.signInWithCredential(
-        credential,
-      );
-      final User? user = userCredential.user;
-
-      if (user != null) {
-        // Save user_id to SharedPreferences for app services
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user_id', user.uid);
-
-        final docRef = _firestore.collection('users').doc(user.uid);
-        final doc = await docRef.get();
-
-        if (!doc.exists) {
-          await docRef.set({
-            'displayname': user.displayName ?? 'New User',
-            'email': user.email ?? '',
-            'avatar': user.photoURL ?? '',
-            'cellnumber': '',
-            'society': '',
-            'dob': '',
-            'profile_completed': false,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
+      await _completeGoogleSignIn();
+      if (mounted) setState(() => _isLoading = false);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      final message = loginErrorMessage(error);
+      if (message != null) {
+        if (kDebugMode) {
+          final category = error is FirebaseAuthException
+              ? error.code
+              : error is PlatformException
+              ? error.code
+              : error.runtimeType;
+          debugPrint('Google sign-in failed ($category).');
         }
-
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
-          );
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) print('Google Sign-In Error: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Google Sign-In failed: $e"),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(message), backgroundColor: Colors.red),
         );
       }
     }
+  }
+
+  Future<void> _completeGoogleSignIn() async {
+    final GoogleSignIn googleSignIn = GoogleSignIn(
+      serverClientId:
+          '226294099341-d6n78vt0atgifcgmignq528bvfhq9t0u.apps.googleusercontent.com',
+    );
+
+    // Force sign-out first to ensure account picker dialog pops up and clear stale tokens
+    try {
+      await googleSignIn.signOut();
+    } catch (_) {}
+
+    final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+    if (googleUser == null) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
+
+    final GoogleSignInAuthentication googleAuth =
+        await googleUser.authentication;
+
+    if (googleAuth.idToken == null) {
+      throw Exception(
+        "Google ID Token is missing. Please ensure your SHA-1 fingerprint is registered in Firebase Console.",
+      );
+    }
+
+    final OAuthCredential credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    final UserCredential userCredential = await _auth.signInWithCredential(
+      credential,
+    );
+    final User? user = userCredential.user;
+
+    if (user != null) {
+      // Save user_id to SharedPreferences for app services
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_id', user.uid);
+
+      await _ensureProfile(
+        RegistrationAccount(
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoUrl: user.photoURL,
+        ),
+      );
+    }
+  }
+
+  Future<void> _ensureProfile(RegistrationAccount account) {
+    return (widget.profileProvisioner ?? AccountProfileProvisioner.instance)
+        .ensureProfile(
+          uid: account.uid,
+          email: account.email,
+          displayName: account.displayName,
+          photoUrl: account.photoUrl,
+        );
   }
 
   Future<void> _forgotPassword() async {
     final TextEditingController resetEmailController = TextEditingController(
       text: _emailController.text,
     );
+    final screenContext = context;
     showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+      context: screenContext,
+      builder: (dialogContext) => AlertDialog(
         title: const Text(
           "Reset Password",
           style: TextStyle(color: Color(0xFF3B0D11)),
@@ -220,7 +242,7 @@ class _LoginScreenState extends State<LoginScreen> {
             onPressed: () async {
               final email = resetEmailController.text.trim();
               if (email.isEmpty || !email.contains("@")) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
                   const SnackBar(
                     content: Text("Please enter a valid email address"),
                     backgroundColor: Colors.red,
@@ -228,11 +250,18 @@ class _LoginScreenState extends State<LoginScreen> {
                 );
                 return;
               }
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               try {
-                await _auth.sendPasswordResetEmail(email: email);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                final sendReset = widget.passwordReset;
+                if (sendReset != null) {
+                  await sendReset(email);
+                } else {
+                  await _auth.sendPasswordResetEmail(email: email);
+                }
+                if (screenContext.mounted) {
+                  final messenger = ScaffoldMessenger.of(screenContext);
+                  messenger.clearSnackBars();
+                  messenger.showSnackBar(
                     const SnackBar(
                       content: Text(
                         "Password reset email sent! Check your inbox.",
@@ -242,10 +271,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   );
                 }
               } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                if (screenContext.mounted) {
+                  final messenger = ScaffoldMessenger.of(screenContext);
+                  messenger.clearSnackBars();
+                  messenger.showSnackBar(
                     SnackBar(
-                      content: Text("Failed to send reset email: $e"),
+                      content: Text(passwordResetErrorMessage(e)),
                       backgroundColor: Colors.red,
                     ),
                   );

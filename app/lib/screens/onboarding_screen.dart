@@ -4,7 +4,9 @@ import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:tingungu_app/screens/register_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key});
+  const OnboardingScreen({super.key, this.onCompleted});
+
+  final VoidCallback? onCompleted;
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -52,6 +54,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     await prefs.setBool('isFirstLaunch', false);
 
     if (!mounted) return;
+    widget.onCompleted?.call();
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const RegisterScreen()),

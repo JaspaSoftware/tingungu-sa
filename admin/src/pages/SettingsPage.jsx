@@ -1,149 +1,82 @@
-import { useState, useEffect } from 'react';
-import { db } from '../firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { FiSave, FiKey, FiCreditCard, FiZap, FiBarChart2, FiGlobe } from 'react-icons/fi';
+import { FiAlertTriangle, FiKey } from 'react-icons/fi';
 
-const SECTIONS = [
+const CONFIG_GROUPS = [
   {
-    id: 'payfast',
-    label: 'PayFast Integration',
-    icon: FiCreditCard,
-    fields: [
-      { key: 'merchantId', label: 'Merchant ID', type: 'text', placeholder: '14362369' },
-      { key: 'merchantKey', label: 'Merchant Key', type: 'password', placeholder: 'Your PayFast merchant key' },
-      { key: 'passphrase', label: 'Passphrase', type: 'password', placeholder: 'Your PayFast passphrase' },
-      { key: 'sandbox', label: 'Sandbox Mode', type: 'checkbox' },
+    title: 'Payments and airtime',
+    variables: [
+      'PAYFAST_SANDBOX',
+      'PAYFAST_MERCHANT_ID',
+      'PAYFAST_MERCHANT_KEY',
+      'PAYFAST_PASSPHRASE',
+      'PUBLIC_API_URL',
+      'FLASH_BASE_URL',
+      'FLASH_TOKEN',
+      'FLASH_ACCOUNT_NUMBER',
     ],
   },
   {
-    id: 'flash',
-    label: 'Flash / VAS Integration',
-    icon: FiZap,
-    fields: [
-      { key: 'apiKey', label: 'API Key', type: 'password', placeholder: 'Flash API key' },
-      { key: 'baseUrl', label: 'Base URL', type: 'text', placeholder: 'https://api.flashgroup.co.za' },
-      { key: 'accountNumber', label: 'Account Number', type: 'text', placeholder: 'Your Flash account number' },
-    ],
-  },
-  {
-    id: 'google',
-    label: 'Google Services',
-    icon: FiBarChart2,
-    fields: [
-      { key: 'analyticsId', label: 'Google Analytics Measurement ID', type: 'text', placeholder: 'G-XXXXXXXXXX' },
-      { key: 'youtubApiKey', label: 'YouTube Data API Key', type: 'password', placeholder: 'YouTube API key for Tingungu TV' },
-      { key: 'youtubePlaylistId', label: 'YouTube Playlist ID', type: 'text', placeholder: 'Playlist ID for Tingungu TV' },
-    ],
-  },
-  {
-    id: 'app',
-    label: 'App Configuration',
-    icon: FiGlobe,
-    fields: [
-      { key: 'appVersion', label: 'App Version', type: 'text', placeholder: '1.0.0' },
-      { key: 'supportEmail', label: 'Support Email', type: 'email', placeholder: 'support@tingungu.co.za' },
-      { key: 'websiteUrl', label: 'Website URL', type: 'text', placeholder: 'https://www.tingungu.co.za' },
-      { key: 'maintenanceMode', label: 'Maintenance Mode', type: 'checkbox' },
+    title: 'Database and Firebase Admin',
+    variables: [
+      'DB_HOST',
+      'DB_PORT',
+      'DB_NAME',
+      'DB_USER',
+      'DB_PASSWORD',
+      'FIREBASE_SERVICE_ACCOUNT',
+      'FIREBASE_PROJECT_ID',
     ],
   },
 ];
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState({});
-  const [saving, setSaving] = useState(null);
-  const [saved, setSaved] = useState(null);
-
-  useEffect(() => {
-    getDoc(doc(db, 'admin_settings', 'config')).then(d => {
-      if (d.exists()) setSettings(d.data());
-    });
-  }, []);
-
-  const handleChange = (section, key, value) => {
-    setSettings(prev => ({
-      ...prev,
-      [section]: { ...(prev[section] || {}), [key]: value }
-    }));
-  };
-
-  const saveSection = async (sectionId) => {
-    setSaving(sectionId);
-    try {
-      await setDoc(doc(db, 'admin_settings', 'config'), settings, { merge: true });
-      setSaved(sectionId);
-      setTimeout(() => setSaved(null), 2000);
-    } finally {
-      setSaving(null);
-    }
-  };
-
   return (
     <div>
       <div className="page-header">
         <div>
           <h1>Settings</h1>
-          <p>Configure API keys and app-wide integrations</p>
+          <p>Integration configuration is managed by deployment administrators.</p>
         </div>
       </div>
 
       <div className="alert alert-info">
         <FiKey size={16} style={{ flexShrink: 0, marginTop: 1 }} />
-        <span>Settings are stored securely in Firestore. API keys are never exposed in the app bundle. Changes take effect immediately for new requests.</span>
+        <span>
+          API credentials are read from the API host environment. They are not
+          stored in Firestore or exposed in the admin or mobile app bundles.
+        </span>
       </div>
 
-      {SECTIONS.map(({ id, label, icon: Icon, fields }) => {
-        const sectionData = settings[id] || {};
-        return (
-          <div className="card settings-section" key={id} style={{ marginBottom: 20 }}>
-            <div className="card-header" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 36, height: 36, background: 'rgba(59,13,17,0.08)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon size={18} style={{ color: 'var(--maroon)' }} />
-                </div>
-                <h3>{label}</h3>
-              </div>
-              <button
-                className={`btn btn-sm ${saved === id ? 'btn-orange' : 'btn-primary'}`}
-                onClick={() => saveSection(id)}
-                disabled={saving === id}
-              >
-                <FiSave size={13} />
-                {saved === id ? 'Saved!' : saving === id ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-            <div className="card-body">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 24px' }}>
-                {fields.map(({ key, label: fLabel, type, placeholder }) => (
-                  <div className="form-group" key={key} style={type === 'checkbox' ? { display: 'flex', alignItems: 'center', gap: 10 } : {}}>
-                    {type === 'checkbox' ? (
-                      <>
-                        <input
-                          type="checkbox"
-                          id={`${id}-${key}`}
-                          checked={sectionData[key] || false}
-                          onChange={e => handleChange(id, key, e.target.checked)}
-                        />
-                        <label htmlFor={`${id}-${key}`} className="form-label" style={{ marginBottom: 0 }}>{fLabel}</label>
-                      </>
-                    ) : (
-                      <>
-                        <label className="form-label">{fLabel}</label>
-                        <input
-                          type={type}
-                          className="form-control"
-                          placeholder={placeholder}
-                          value={sectionData[key] || ''}
-                          onChange={e => handleChange(id, key, e.target.value)}
-                        />
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-      })}
+      <div className="card">
+        <div className="card-header">
+          <h3>Azure App Service configuration</h3>
+        </div>
+        <div className="card-body">
+          <p>
+            Set these values in the API App Service configuration and restart
+            the service after changing them. Do not enter secret values in this
+            portal or commit them to source control.
+          </p>
+          {CONFIG_GROUPS.map(({ title, variables }) => (
+            <section key={title} style={{ marginTop: 24 }}>
+              <h4>{title}</h4>
+              <ul>
+                {variables.map(variable => <li key={variable}><code>{variable}</code></li>)}
+              </ul>
+            </section>
+          ))}
+        </div>
+      </div>
+
+      <div className="alert alert-error" style={{ marginTop: 20 }}>
+        <FiAlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+        <span>
+          If credentials were previously entered in the old Firestore
+          <code> admin_settings/config </code>
+          document, remove that document using trusted Firebase administration
+          and rotate every credential it contained. This portal no longer reads
+          or writes that collection.
+        </span>
+      </div>
     </div>
   );
 }

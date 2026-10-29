@@ -821,6 +821,24 @@ textarea.form-control {
   min-height: 120px;
 }
 
+.form-status {
+  margin-top: 16px;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.form-status:empty {
+  display: none;
+}
+
+.form-status.success {
+  color: #176b3a;
+}
+
+.form-status.error {
+  color: #a12626;
+}
+
 /* ===================================================================
  * Responsive Media Queries
  * =================================================================== */

@@ -1,10 +1,8 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { FiUsers } from 'react-icons/fi';
 import { format } from 'date-fns';
-import { API_BASE_URL } from '../config';
-import { apiFetch } from '../api';
 
 function Modal({ title, onClose, onSave, loading, children }) {
   return (
@@ -33,8 +31,7 @@ export default function UsersPage() {
   const itemsPerPage = 10;
   
   const [selectedUser, setSelectedUser] = useState(null);
-  const [updatingRole, setUpdatingRole] = useState(false);
-  const [selectedRole, setSelectedRole] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
 
@@ -44,24 +41,15 @@ export default function UsersPage() {
     });
   }, []);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search]);
-
   const filtered = users.filter(u =>
     (u.displayname || u.email || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
+  const activePage = Math.min(currentPage, Math.max(totalPages, 1));
+  const indexOfLastItem = activePage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentUsers = filtered.slice(indexOfFirstItem, indexOfLastItem);
-
-  useEffect(() => {
-    if (totalPages > 0 && currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [filtered.length, totalPages, currentPage]);
 
   const initials = (u) => {
     const name = u.displayname || u.email || '?';
@@ -70,93 +58,28 @@ export default function UsersPage() {
 
   const openProfile = (u) => {
     setSelectedUser(u);
-    setSelectedRole(u.role || 'member');
     setFirstName(u.firstname || u.first_name || '');
     setLastName(u.lastname || u.last_name || '');
   };
 
-  const saveRole = async () => {
+  const saveProfile = async () => {
     if (!selectedUser) return;
-    setUpdatingRole(true);
+    setSavingProfile(true);
     try {
       const displayName = `${firstName.trim()} ${lastName.trim()}`.trim();
       await updateDoc(doc(db, 'users', selectedUser.id), {
-        role: selectedRole,
         firstname: firstName.trim(),
         lastname: lastName.trim(),
         displayname: displayName || selectedUser.displayname || ''
       });
-
-      // Sync with MySQL database
-      if (selectedUser.email) {
-        try {
-          await apiFetch(`${API_BASE_URL}/users/${encodeURIComponent(selectedUser.email)}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              firstname: firstName.trim(),
-              lastname: lastName.trim(),
-              cellphone: selectedUser.cellphone || null
-            })
-          });
-        } catch (apiErr) {
-          console.error("Failed to sync user with MySQL database:", apiErr);
-        }
-      }
-
-      setSelectedUser(prev => prev ? { ...prev, role: selectedRole, firstname: firstName, lastname: lastName, displayname: displayName || prev.displayname } : null);
+      setSelectedUser(prev => prev
+        ? { ...prev, firstname: firstName.trim(), lastname: lastName.trim(), displayname: displayName || prev.displayname }
+        : null);
     } catch (err) {
       console.error("Error updating user profile:", err);
       alert("Failed to update user profile");
     } finally {
-      setUpdatingRole(false);
-    }
-  };
-
-  const toggleSuspend = async () => {
-    if (!selectedUser) return;
-    setUpdatingRole(true);
-    const newSuspended = !selectedUser.suspended;
-    try {
-      await updateDoc(doc(db, 'users', selectedUser.id), {
-        suspended: newSuspended
-      });
-      setSelectedUser(prev => prev ? { ...prev, suspended: newSuspended } : null);
-    } catch (err) {
-      console.error("Error toggling user suspension:", err);
-      alert("Failed to toggle suspension state");
-    } finally {
-      setUpdatingRole(false);
-    }
-  };
-
-  const deleteUser = async () => {
-    if (!selectedUser) return;
-    if (!confirm(`Are you sure you want to delete ${selectedUser.displayname || selectedUser.email || 'this user'}? This will permanently delete their account from both Firestore and the MySQL database.`)) {
-      return;
-    }
-    setUpdatingRole(true);
-    try {
-      // 1. Delete from Firestore
-      await deleteDoc(doc(db, 'users', selectedUser.id));
-
-      // 2. Delete from MySQL
-      if (selectedUser.email) {
-        try {
-          await apiFetch(`${API_BASE_URL}/users/${encodeURIComponent(selectedUser.email)}`, {
-            method: 'DELETE'
-          });
-        } catch (apiErr) {
-          console.error("Failed to delete user from MySQL database:", apiErr);
-        }
-      }
-      
-      setSelectedUser(null);
-    } catch (err) {
-      console.error("Error deleting user:", err);
-      alert("Failed to delete user profile");
-    } finally {
-      setUpdatingRole(false);
+      setSavingProfile(false);
     }
   };
 
@@ -177,7 +100,14 @@ export default function UsersPage() {
         </div>
         <div className="search-bar">
           <FiUsers size={16} />
-          <input placeholder="Search by name or email..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input
+            placeholder="Search by name or email..."
+            value={search}
+            onChange={e => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
+          />
         </div>
       </div>
 
@@ -195,7 +125,7 @@ export default function UsersPage() {
                 <tr>
                   <th>Member</th>
                   <th>Email</th>
-                  <th>Role</th>
+                  <th>Role label</th>
                   <th>Society</th>
                   <th>Wallet Balance</th>
                   <th>Status</th>
@@ -250,18 +180,18 @@ export default function UsersPage() {
               <div className="pagination" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, padding: '16px 24px', borderTop: '1px solid var(--border)' }}>
                 <button
                   className="btn btn-outline btn-sm"
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(Math.max(activePage - 1, 1))}
+                  disabled={activePage === 1}
                 >
                   Previous
                 </button>
                 <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                  Page {currentPage} of {totalPages}
+                  Page {activePage} of {totalPages}
                 </span>
                 <button
                   className="btn btn-outline btn-sm"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(Math.min(activePage + 1, totalPages))}
+                  disabled={activePage === totalPages}
                 >
                   Next
                 </button>
@@ -272,7 +202,7 @@ export default function UsersPage() {
       </div>
 
       {selectedUser && (
-        <Modal title="Member Profile" onClose={() => setSelectedUser(null)} onSave={saveRole} loading={updatingRole}>
+        <Modal title="Member Profile" onClose={() => setSelectedUser(null)} onSave={saveProfile} loading={savingProfile}>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 20 }}>
             <div className="avatar" style={{ width: 56, height: 56, borderRadius: '50%', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--border)', color: 'var(--text-main)', fontWeight: 'bold' }}>
               {initials(selectedUser)}
@@ -329,39 +259,12 @@ export default function UsersPage() {
             </div>
           </div>
 
-          <div className="form-group" style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-            <label className="form-label" style={{ fontWeight: 600 }}>Assign User Role</label>
-            <select className="form-control" value={selectedRole} onChange={e => setSelectedRole(e.target.value)}>
-              <option value="member">Member</option>
-              <option value="pastor">Pastor</option>
-              <option value="admin">Admin</option>
-              <option value="superadmin">Superadmin</option>
-            </select>
-          </div>
-
-          <div style={{ display: 'flex', gap: 12, marginTop: 24, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-            <button
-              className={`btn ${selectedUser.suspended ? 'btn-orange' : 'btn-primary'}`}
-              onClick={toggleSuspend}
-              disabled={updatingRole}
-              style={{ flex: 1 }}
-            >
-              {selectedUser.suspended ? 'Unsuspend Member' : 'Suspend Member'}
-            </button>
-            <button
-              className="btn btn-danger"
-              onClick={deleteUser}
-              disabled={updatingRole}
-              style={{ flex: 1 }}
-            >
-              Delete Member
-            </button>
-          </div>
+          <p style={{ marginTop: 20, color: 'var(--text-secondary)' }}>
+            Account roles, suspension, and deletion are managed through trusted
+            Firebase administration, not by editing a profile document.
+          </p>
         </Modal>
       )}
     </div>
   );
 }
-
-
-

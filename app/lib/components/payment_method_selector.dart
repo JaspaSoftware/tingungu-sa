@@ -10,6 +10,7 @@ class PaymentMethodSelector extends StatefulWidget {
   final String? givingOptionId;
   final Function(String method) onPaymentSuccess;
   final VoidCallback onPaymentFailed;
+  final ValueChanged<String> onPaymentPending;
 
   const PaymentMethodSelector({
     super.key,
@@ -20,6 +21,7 @@ class PaymentMethodSelector extends StatefulWidget {
     this.givingOptionId,
     required this.onPaymentSuccess,
     required this.onPaymentFailed,
+    required this.onPaymentPending,
   });
 
   @override
@@ -64,13 +66,25 @@ class _PaymentMethodSelectorState extends State<PaymentMethodSelector> {
       final result = await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => PayFastWebView(session: session, isWalletTopUp: false),
+          builder: (context) =>
+              PayFastWebView(session: session, isWalletTopUp: false),
         ),
       );
-      if (result == true) {
-        widget.onPaymentSuccess('PayFast');
+      if (result is PaymentPollResult) {
+        switch (result.status) {
+          case PaymentState.complete:
+            widget.onPaymentSuccess('PayFast');
+            break;
+          case PaymentState.failed:
+          case PaymentState.cancelled:
+            widget.onPaymentFailed();
+            break;
+          case PaymentState.pending:
+            widget.onPaymentPending(session.paymentId);
+            break;
+        }
       } else {
-        widget.onPaymentFailed();
+        widget.onPaymentPending(session.paymentId);
       }
     } catch (e) {
       if (mounted) {
@@ -114,15 +128,26 @@ class _PaymentMethodSelectorState extends State<PaymentMethodSelector> {
                 children: [
                   const Text(
                     'Choose Payment Method',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF3B0D11)),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF3B0D11),
+                    ),
                   ),
-                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
                 'Total Amount: R ${widget.amount.toStringAsFixed(2)}',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFFFB8B24)),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFFFB8B24),
+                ),
               ),
               const SizedBox(height: 24),
               _buildPaymentOption(
@@ -167,7 +192,7 @@ class _PaymentMethodSelectorState extends State<PaymentMethodSelector> {
               color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 5,
               offset: const Offset(0, 2),
-            )
+            ),
           ],
         ),
         child: Row(
@@ -185,13 +210,26 @@ class _PaymentMethodSelectorState extends State<PaymentMethodSelector> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                  Text(subtitle, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  ),
                 ],
               ),
             ),
             if (isLoading)
-              const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
             else
               const Icon(Icons.chevron_right, color: Colors.grey),
           ],

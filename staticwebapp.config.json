@@ -1,11 +1,22 @@
 {
-  "navigationFallback": {
-    "rewrite": "/index.html"
-  },
   "routes": [
+    {
+      "route": "/app/*",
+      "rewrite": "/app/index.html"
+    },
     {
       "route": "/admin/*",
       "rewrite": "/admin/index.html"
     }
-  ]
+  ],
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": [
+      "/app/assets/*",
+      "/app/canvaskit/*",
+      "/app/icons/*",
+      "/admin/assets/*",
+      "*.{css,ico,js,json,png,svg,txt,webp,woff,woff2}"
+    ]
+  }
 }

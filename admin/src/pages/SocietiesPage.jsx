@@ -81,7 +81,7 @@ export default function SocietiesPage() {
       
       const method = editing ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

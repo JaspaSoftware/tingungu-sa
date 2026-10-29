@@ -1,47 +1,45 @@
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+
 import '../data/scripture_model.dart';
+import 'api_client.dart';
 
 class ScriptureService {
-  static const String _baseUrl = 'https://labs.bible.org/api/';
+  static const String _baseUrl = 'https://labs.bible.org/api';
+  static final ApiClient _api = ApiClient.shared;
 
   /// Fetch a random scripture verse
   /// Uses NET Bible API which supports 'random' as passage parameter
   /// No API key required
   static Future<Scripture> getRandomScripture() async {
     try {
-      final response = await http
-          .get(Uri.parse('$_baseUrl?passage=random&formatting=plain&type=json'))
-          .timeout(const Duration(seconds: 10));
+      final response = await _api.get(
+        '',
+        baseUrl: _baseUrl,
+        queryParameters: {
+          'passage': 'random',
+          'formatting': 'plain',
+          'type': 'json',
+        },
+        timeout: const Duration(seconds: 10),
+      );
+      final data = response.body;
+      if (data is List && data.isNotEmpty && data.first is Map<String, dynamic>) {
+        final verse = data.first as Map<String, dynamic>;
+        final text = verse['text'] ?? '';
+        final bookname = verse['bookname'] ?? 'Unknown';
+        final chapter = verse['chapter'] ?? 0;
+        final verseNum = verse['verse'] ?? 0;
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
-        if (data is List && data.isNotEmpty) {
-          final verse = data[0];
-
-          final text = verse['text'] ?? '';
-          final bookname = verse['bookname'] ?? 'Unknown';
-          final chapter = verse['chapter'] ?? 0;
-          final verseNum = verse['verse'] ?? 0;
-
-          return Scripture(
-            text: '"$text"',
-            reference: '$bookname $chapter:$verseNum',
-            translation: 'NET Bible',
-          );
-        }
+        return Scripture(
+          text: '"$text"',
+          reference: '$bookname $chapter:$verseNum',
+          translation: 'NET Bible',
+        );
       }
 
-      // Return default if API fails
       return _getDefaultScripture();
     } catch (e) {
-      if (kDebugMode) {
-        if (kDebugMode) {
-          print('Error fetching scripture: $e');
-        }
-      }
+      debugPrint('Error fetching scripture: $e');
       return _getDefaultScripture();
     }
   }

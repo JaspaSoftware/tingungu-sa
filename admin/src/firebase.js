@@ -4,13 +4,22 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyCAUA2qK41jnftXP_g2yx-P4yYyZwWgA_U',
-  authDomain: 'tingungu-sa.firebaseapp.com',
-  projectId: 'tingungu-sa',
-  storageBucket: 'tingungu-sa.firebasestorage.app',
-  messagingSenderId: '226294099341',
-  appId: '1:226294099341:android:6cbb7d031dae132b1e61c4',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
 };
+
+const missingConfig = Object.entries(firebaseConfig).filter(([, value]) => !value).map(([key]) => key);
+
+if (missingConfig.length > 0) {
+  console.warn(
+    `Firebase configuration is incomplete for: ${missingConfig.join(', ')}. ` +
+      'Set the VITE_FIREBASE_* environment variables before starting the admin app.'
+  );
+}
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);

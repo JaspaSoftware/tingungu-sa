@@ -60,13 +60,23 @@ class _CommunityScreenState extends State<CommunityScreen> {
       _isLoading = true;
       _hasError = false;
     });
-    final districts = await InfoHubService.loadDirectory();
-    if (!mounted) return;
-    setState(() {
-      _districts = districts;
-      _isLoading = false;
-      _hasError = districts.isEmpty;
-    });
+    try {
+      final districts = await InfoHubService.loadDirectory();
+      if (!mounted) return;
+      setState(() {
+        _districts = districts;
+        _isLoading = false;
+        _hasError = districts.isEmpty;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      debugPrint('Could not load the church directory: $error');
+      setState(() {
+        _districts = [];
+        _isLoading = false;
+        _hasError = true;
+      });
+    }
   }
 
   bool _circuitMatches(HubCircuit circuit) {

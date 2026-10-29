@@ -27,8 +27,8 @@ export default function TicketsPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Support Tickets</h1>
-          <p>User-submitted issues from the app</p>
+          <h1>Support Tickets & Contact Messages</h1>
+          <p>Messages submitted from the app and public website</p>
         </div>
       </div>
 
@@ -63,7 +63,9 @@ export default function TicketsPage() {
                   <tr key={t.id}>
                     <td><strong>{t.subject || 'No subject'}</strong></td>
                     <td style={{ maxWidth: 280 }} className="truncate">{t.message || '—'}</td>
-                    <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t.userEmail || t.userId?.slice(0, 10) || '—'}</td>
+                    <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                      {t.contactName ? `${t.contactName} · ` : ''}{t.userEmail || t.userId?.slice(0, 10) || '—'}
+                    </td>
                     <td><span className={`badge ${STATUS_COLORS[t.status] || 'badge-neutral'}`} style={{ textTransform: 'capitalize' }}>{t.status || 'open'}</span></td>
                     <td style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                       {t.createdAt?.toDate ? format(t.createdAt.toDate(), 'dd MMM yyyy') : '—'}
